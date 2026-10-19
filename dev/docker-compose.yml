@@ -48,6 +48,56 @@ services:
       NBXPLORER_NOAUTH: 1
       NBXPLORER_EXPOSERPC: 1
     depends_on: [bitcoind, postgres]
+  merchant_lightningd:
+    # Lightning dev only (docker compose --profile ln up -d). Regtest, 127.0.0.1 only.
+    profiles: ["ln"]
+    network_mode: host
+    image: btcpayserver/lightning:v26.06.1
+    stop_signal: SIGKILL
+    mem_limit: 256m
+    environment:
+      LIGHTNINGD_CHAIN: "btc"
+      LIGHTNINGD_NETWORK: "regtest"
+      LIGHTNINGD_PORT: "39735"  # the image's entrypoint binds 0.0.0.0:$LIGHTNINGD_PORT (regtest only)
+      LIGHTNINGD_OPT: |
+        developer
+        bitcoin-rpcconnect=127.0.0.1
+        bitcoin-rpcport=43782
+        bitcoin-rpcuser=ceiwHEbqWI83
+        bitcoin-rpcpassword=DwubwWsoo3
+        announce-addr=127.0.0.1:39735
+        grpc-port=39740
+        funding-confirms=1
+        dev-fast-gossip
+        dev-bitcoind-poll=1
+        log-level=info
+    volumes: ["./.ln/merchant:/root/.lightning"]
+    depends_on: [bitcoind]
+  customer_lightningd:
+    # Lightning dev only (docker compose --profile ln up -d). Regtest, 127.0.0.1 only.
+    profiles: ["ln"]
+    network_mode: host
+    image: btcpayserver/lightning:v26.06.1
+    stop_signal: SIGKILL
+    mem_limit: 256m
+    environment:
+      LIGHTNINGD_CHAIN: "btc"
+      LIGHTNINGD_NETWORK: "regtest"
+      LIGHTNINGD_PORT: "39736"
+      LIGHTNINGD_OPT: |
+        developer
+        bitcoin-rpcconnect=127.0.0.1
+        bitcoin-rpcport=43782
+        bitcoin-rpcuser=ceiwHEbqWI83
+        bitcoin-rpcpassword=DwubwWsoo3
+        announce-addr=127.0.0.1:39736
+        grpc-port=39741
+        funding-confirms=1
+        dev-fast-gossip
+        dev-bitcoind-poll=1
+        log-level=info
+    volumes: ["./.ln/customer:/root/.lightning"]
+    depends_on: [bitcoind]
 volumes:
   bitcoin_datadir:
   postgres_datadir:

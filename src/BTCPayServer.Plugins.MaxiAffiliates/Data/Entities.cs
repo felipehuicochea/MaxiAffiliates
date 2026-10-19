@@ -107,7 +107,36 @@ public class PayoutBatch
     public string? PayoutId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ApprovedAt { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
+    public string? CycleId { get; set; }
+    public PayoutCycle? Cycle { get; set; }
+    /// <summary>Sum of the commissions in the batch (before clawbacks).</summary>
+    public long GrossSats { get; set; }
+    /// <summary>Clawbacks netted in this batch (&lt;= 0). AmountSats = GrossSats + AdjustmentSats.</summary>
+    public long AdjustmentSats { get; set; }
+    public int CommissionCount { get; set; }
+    public string? Error { get; set; }
     public List<Commission> Commissions { get; set; } = new();
+}
+
+/// <summary>One run of the weekly/monthly payout cycle for a store (or a manual run): the "commissions due" report.</summary>
+public class PayoutCycle
+{
+    public string Id { get; set; } = Ids.New();
+    public string StoreId { get; set; } = null!;
+    /// <summary>"M-2026-11-01", "W-2026-11-02" or "manual-…"; unique per store so a scheduled cycle runs once.</summary>
+    public string CycleKey { get; set; } = null!;
+    public DateTimeOffset PeriodEnd { get; set; }
+    public DateTimeOffset RunAt { get; set; }
+    public bool Manual { get; set; }
+    public bool AutoApproved { get; set; }
+    public long MinPayoutSats { get; set; }
+    public int BatchCount { get; set; }
+    public long TotalSats { get; set; }
+    /// <summary>Affiliates with a positive balance below the minimum (carried over) at run time.</summary>
+    public int CarriedOverCount { get; set; }
+    public long CarriedOverSats { get; set; }
+    public List<PayoutBatch> Batches { get; set; } = new();
 }
 
 /// <summary>Per-store plugin settings. Defaults = Jefe's suggested defaults.</summary>

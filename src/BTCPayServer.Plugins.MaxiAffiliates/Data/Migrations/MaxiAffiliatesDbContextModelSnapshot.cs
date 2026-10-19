@@ -311,6 +311,9 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("text");
 
+                    b.Property<long>("AdjustmentSats")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("AffiliateId")
                         .HasColumnType("text");
 
@@ -320,17 +323,33 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
                     b.Property<DateTimeOffset?>("ApprovedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("CommissionCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset>("CycleEnd")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CycleId")
+                        .HasColumnType("text");
+
                     b.Property<DateTimeOffset>("CycleStart")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Destination")
                         .HasColumnType("text");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<long>("GrossSats")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("PayoutId")
                         .HasColumnType("text");
@@ -355,9 +374,60 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
 
                     b.HasIndex("AffiliateId");
 
+                    b.HasIndex("CycleId");
+
+                    b.HasIndex("PayoutId");
+
                     b.HasIndex("StoreId", "State");
 
                     b.ToTable("PayoutBatches", "BTCPayServer.Plugins.MaxiAffiliates");
+                });
+
+            modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.PayoutCycle", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("AutoApproved")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("BatchCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CarriedOverCount")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("CarriedOverSats")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("CycleKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("Manual")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("MinPayoutSats")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("PeriodEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("RunAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("StoreId")
+                        .HasColumnType("text");
+
+                    b.Property<long>("TotalSats")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreId", "CycleKey")
+                        .IsUnique();
+
+                    b.ToTable("PayoutCycles", "BTCPayServer.Plugins.MaxiAffiliates");
                 });
 
             modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.PendingCredit", b =>
@@ -475,7 +545,14 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
                         .HasForeignKey("AffiliateId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("BTCPayServer.Plugins.MaxiAffiliates.Data.PayoutCycle", "Cycle")
+                        .WithMany("Batches")
+                        .HasForeignKey("CycleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Affiliate");
+
+                    b.Navigation("Cycle");
                 });
 
             modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.Referral", b =>
@@ -498,6 +575,11 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
             modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.PayoutBatch", b =>
                 {
                     b.Navigation("Commissions");
+                });
+
+            modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.PayoutCycle", b =>
+                {
+                    b.Navigation("Batches");
                 });
 
             modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.Referral", b =>

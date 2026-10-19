@@ -92,3 +92,38 @@
   - "Process now" retries every waiting credit immediately, including ones it gave up on.
   - Retries rebuild the invoice from `InvoiceRepository` and use the store's current rate rules.
 - **Display.** Fiat amounts are rounded to the currency's divisibility (`CurrencyNameTable`). Scope, type, balance-state and reversal-reason labels are friendly localizable keys.
+
+## M6: payout cycle and payouts
+
+- **Cycle.** `PayoutCycleService.CurrentCycle` computes the latest boundary at UTC midnight:
+  - Weekly: `PayoutDay` 0 (Sunday) to 6.
+  - Monthly: day 1 to 28.
+  - The maintenance service, every 10 minutes, runs a store's cycle once per boundary (unique `(StoreId, CycleKey)`).
+  - A program configured after the current boundary starts at the next one.
+  - Admins can also **Run payout cycle now** (a manual cycle with its own key).
+- **Report.** A cycle matures holds that have ended, takes the `Due` balances (payable commissions plus clawbacks ≥ minimum), and creates one `PayoutBatch` per affiliate. It claims the items by setting `PayoutBatchId` on the unbatched rows only.
+  - Below-minimum balances carry over and are counted on the cycle.
+  - A store-disabled payout method or a non-active affiliate keeps the balance.
+  - **Commissions due report**: `/stores/{id}/plugins/maxiaffiliates/payouts/{cycleId}`.
+  - **CSV**: `/payouts/{cycleId}/csv` (UTF-8 BOM, RFC 4180, formula-injection guard on text cells).
+- **Approval.** Manual is the default: batches start "Awaiting approval", and you approve them one at a time or all together. With `AutoApprovePayouts`, approval happens right after the cycle runs.
+  - Approval moves the batch Draft → Approved atomically, so there's no double payout, and creates a **store payout**. It goes through `PullPaymentHostedService.Claim` with no pull payment and is pre-approved, the same path as Greenfield `POST /stores/{id}/payouts`.
+  - Method: `BTC-LN` or `BTC-CHAIN`, to the destination snapshotted from the affiliate. The store's automated payout processors (or a manual send) pay it.
+  - If destination validation or the claim fails, the batch is `Failed` with the error, and its items go back to the balance.
+- **Tracking.** `PayoutEvent`, plus reconciliation on each maintenance run (events can race storing the payout id):
+  - InProgress → `Sent`.
+  - Completed → `Completed`, and its commissions become `Paid` with `PaidAt`.
+  - Cancelled → `Cancelled`, and its items are released.
+  - A refund after payout becomes a clawback (M5) netted in the next cycle.
+- **Abstraction.** `IPayoutGateway`, with `BtcPayPayoutGateway` in production; tests use a fake.
+
+### Lightning dev setup
+`docker compose --profile ln up -d` starts two CLN nodes (`btcpayserver/lightning:v26.06.1`, 256 MB limit each).
+
+- RPC sockets are in `dev/.ln/*`.
+- The entrypoint binds P2P on 0.0.0.0:39735/39736 (regtest only).
+- `dev/ln_setup.py` opens a 2M-sat channel merchant → customer.
+- `dev/m6_setup.py` sets up:
+  - the store's LN node (merchant), a hot on-chain wallet with funds, and the automated payout processors (instant)
+  - an "Affiliate wallet" store on the customer node with a Lightning address. Its LNURL (http://127.0.0.1) is the LN affiliate's destination.
+- BTCPay's SSRF protection blocks local LNURLs, so `dev/run-btcpay.sh` sets `BTCPAY_SSRFEXCEPTIONS=127.0.0.1:14142` for dev only.

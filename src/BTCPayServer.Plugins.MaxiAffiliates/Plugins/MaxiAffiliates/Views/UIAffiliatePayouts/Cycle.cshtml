@@ -1,0 +1,65 @@
+@model PayoutCycleViewModel
+@{
+    ViewData.SetLayoutModel(new LayoutModel(Plugin.Area, StringLocalizer["Commissions due"]));
+    string Sats(long v) => v.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
+    string Badge(PayoutBatchState s) => s switch { PayoutBatchState.Completed => "bg-success", PayoutBatchState.Draft => "bg-warning text-dark", PayoutBatchState.Failed or PayoutBatchState.Cancelled => "bg-danger", _ => "bg-primary" };
+    string StateKey(PayoutBatchState s) => s switch { PayoutBatchState.Draft => "Awaiting approval", PayoutBatchState.Approved => "Payout created", PayoutBatchState.Sent => "Sending", PayoutBatchState.Completed => "Paid", PayoutBatchState.Failed => "Failed", _ => "Cancelled" };
+    var c = Model.Cycle;
+}
+<div class="sticky-header d-flex justify-content-between align-items-center">
+  <h2>@ViewData["Title"] <small class="text-secondary">@(c.Manual ? StringLocalizer["Manual run"] : c.CycleKey) · @c.RunAt.ToString("yyyy-MM-dd HH:mm")</small></h2>
+  <div class="d-flex gap-2">
+    <a class="btn btn-secondary" asp-action="Csv" asp-route-storeId="@Model.StoreId" asp-route-cycleId="@c.Id" id="maxiaff-csv" text-translate="true">Download CSV</a>
+    @if (Model.Rows.Any(r => r.Batch.State == PayoutBatchState.Draft))
+    {
+      <form method="post" asp-action="ApproveAll" asp-route-storeId="@Model.StoreId" asp-route-cycleId="@c.Id" permission="@MaxiAffiliatesPolicies.CanManageAffiliates">
+        <button class="btn btn-primary" type="submit" id="maxiaff-approve-all" text-translate="true">Approve all and create payouts</button>
+      </form>
+    }
+  </div>
+</div>
+<partial name="_StatusMessage" />
+<partial name="UIAffiliateSettings/_Tabs" />
+<p>@StringLocalizer["{0} payouts, {1} sats. {2} affiliates below the minimum of {3} sats carry over ({4} sats).", c.BatchCount, Sats(c.TotalSats), c.CarriedOverCount, Sats(c.MinPayoutSats), Sats(c.CarriedOverSats)]</p>
+@if (Model.Rows.Length == 0)
+{
+  <p class="text-secondary" text-translate="true">No affiliate reached the minimum payout in this cycle.</p>
+}
+else
+{
+<div class="table-responsive">
+<table class="table table-hover" id="maxiaff-batches">
+  <thead><tr>
+    <th text-translate="true">Affiliate</th><th text-translate="true">Payout method</th><th text-translate="true">Destination</th><th class="text-end" text-translate="true">Commissions</th>
+    <th class="text-end" text-translate="true">Gross</th><th class="text-end" text-translate="true">Clawbacks</th><th class="text-end">sats</th><th text-translate="true">Status</th><th></th>
+  </tr></thead>
+  <tbody>
+  @foreach (var r in Model.Rows)
+  {
+    var b = r.Batch;
+    <tr data-affiliate="@r.Email" data-state="@b.State" data-payout="@b.PayoutId" data-batch="@b.Id">
+      <td>@r.Email <span class="text-secondary">(@r.Code)</span></td>
+      <td>@(b.PayoutMethod == PayoutMethodKind.Lightning ? StringLocalizer["Lightning"] : StringLocalizer["On-chain"])</td>
+      <td class="text-break small"><code>@(b.Destination.Length > 40 ? b.Destination[..20] + "…" + b.Destination[^12..] : b.Destination)</code></td>
+      <td class="text-end">@b.CommissionCount</td>
+      <td class="text-end">@Sats(b.GrossSats)</td>
+      <td class="text-end">@Sats(b.AdjustmentSats)</td>
+      <td class="text-end fw-semibold">@Sats(b.AmountSats)</td>
+      <td><span class="badge @Badge(b.State)">@StringLocalizer[StateKey(b.State)]</span>
+        @if (b.PayoutId is not null) {<div class="small"><a asp-area="" asp-controller="UIStorePullPayments" asp-action="Payouts" asp-route-storeId="@Model.StoreId">@b.PayoutId</a></div>}
+        @if (b.Error is not null) {<div class="small text-danger">@b.Error</div>}</td>
+      <td class="text-end">
+        @if (b.State == PayoutBatchState.Draft)
+        {
+          <form method="post" asp-action="Batch" asp-route-storeId="@Model.StoreId" asp-route-batchId="@b.Id" asp-route-cycleId="@c.Id" class="d-inline" permission="@MaxiAffiliatesPolicies.CanManageAffiliates">
+            <button class="btn btn-link p-0 me-2" type="submit" name="op" value="approve" formaction="@Url.Action("Batch", new { storeId = Model.StoreId, batchId = b.Id, op = "approve", cycleId = c.Id })" text-translate="true">Approve</button>
+            <button class="btn btn-link text-danger p-0" type="submit" formaction="@Url.Action("Batch", new { storeId = Model.StoreId, batchId = b.Id, op = "cancel", cycleId = c.Id })" text-translate="true">Cancel</button>
+          </form>
+        }
+      </td>
+    </tr>
+  }
+  </tbody>
+</table>
+</div>
+}

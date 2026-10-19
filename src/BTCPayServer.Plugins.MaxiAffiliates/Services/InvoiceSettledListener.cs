@@ -13,13 +13,14 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Services;
 /// Credits commissions when invoices settle, and reverses/claws back on invalidation, invoice refunds and subscription credit refunds.
 /// </summary>
 public class InvoiceSettledListener(
-    EventAggregator events, ILogger<InvoiceSettledListener> logger, CommissionEngine engine, CommissionLedger ledger, InvoiceCommissionMapper mapper)
+    EventAggregator events, ILogger<InvoiceSettledListener> logger, CommissionEngine engine, CommissionLedger ledger, InvoiceCommissionMapper mapper, PayoutCycleService cycles)
     : EventHostedServiceBase(events, logger)
 {
     protected override void SubscribeToEvents()
     {
         Subscribe<InvoiceEvent>();
         Subscribe<SubscriptionEvent.CreditRefunded>();
+        Subscribe<BTCPayServer.HostedServices.PayoutEvent>();
     }
 
     protected override async Task ProcessEvent(object evt, CancellationToken ct)
@@ -48,6 +49,9 @@ public class InvoiceSettledListener(
                         if (result.Outcome != CreditOutcome.NoReferral)
                             logger.LogInformation("MaxiAffiliates: invoice {Invoice} -> {Outcome}", inv.Id, result.Outcome);
                     }
+                    break;
+                case BTCPayServer.HostedServices.PayoutEvent { Payout: { } po }:
+                    await cycles.OnPayoutState(po.Id, po.State, ct);
                     break;
                 case SubscriptionEvent.CreditRefunded r:
                 {

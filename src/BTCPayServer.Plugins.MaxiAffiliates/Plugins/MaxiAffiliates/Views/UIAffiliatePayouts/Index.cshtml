@@ -1,0 +1,45 @@
+@model PayoutsViewModel
+@{
+    ViewData.SetLayoutModel(new LayoutModel(Plugin.Area, StringLocalizer["Payouts"]));
+    string Sats(long v) => v.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
+    var due = Model.Balances.Where(b => b.State == BalanceState.Due).ToArray();
+}
+<div class="sticky-header d-flex justify-content-between align-items-center">
+  <h2>@ViewData["Title"]</h2>
+  <form method="post" asp-action="Run" asp-route-storeId="@Model.StoreId" permission="@MaxiAffiliatesPolicies.CanManageAffiliates">
+    <button class="btn btn-primary" type="submit" id="maxiaff-run-cycle" text-translate="true">Run payout cycle now</button>
+  </form>
+</div>
+<partial name="_StatusMessage" />
+<partial name="UIAffiliateSettings/_Tabs" />
+<p class="text-secondary" id="maxiaff-cycle-info">
+  @StringLocalizer["Cycle: {0}. Next scheduled run: {1} (UTC). Minimum payout: {2} sats. Approval: {3}.",
+      StringLocalizer[Model.Settings.PayoutFrequency.ToString()], Model.NextCycle.ToString("yyyy-MM-dd"), Sats(Model.Settings.MinPayoutSats),
+      Model.Settings.AutoApprovePayouts ? StringLocalizer["automatic"] : StringLocalizer["manual"]]
+</p>
+<p>@StringLocalizer["Due right now: {0} affiliates, {1} sats.", due.Length, Sats(due.Sum(b => b.NetSats))]</p>
+<h4 text-translate="true">Payout cycles</h4>
+@if (Model.Cycles.Length == 0)
+{
+  <p class="text-secondary" text-translate="true">No payout cycles yet.</p>
+}
+else
+{
+<table class="table table-hover" id="maxiaff-cycles">
+  <thead><tr><th text-translate="true">Cycle</th><th text-translate="true">Run at</th><th class="text-end" text-translate="true">Payouts</th><th class="text-end">sats</th><th class="text-end" text-translate="true">Carried over</th><th text-translate="true">Approval</th><th></th></tr></thead>
+  <tbody>
+  @foreach (var c in Model.Cycles)
+  {
+    <tr data-cycle="@c.Id">
+      <td>@(c.Manual ? StringLocalizer["Manual run"] : c.CycleKey)</td>
+      <td>@c.RunAt.ToString("yyyy-MM-dd HH:mm")</td>
+      <td class="text-end">@c.BatchCount</td>
+      <td class="text-end">@Sats(c.TotalSats)</td>
+      <td class="text-end">@c.CarriedOverCount (@Sats(c.CarriedOverSats) sats)</td>
+      <td>@(c.AutoApproved ? StringLocalizer["automatic"] : StringLocalizer["manual"])</td>
+      <td class="text-end"><a asp-action="Cycle" asp-route-storeId="@Model.StoreId" asp-route-cycleId="@c.Id" text-translate="true">Commissions due report</a></td>
+    </tr>
+  }
+  </tbody>
+</table>
+}

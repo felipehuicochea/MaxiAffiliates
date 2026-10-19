@@ -18,6 +18,7 @@ public class MaxiAffiliatesDbContext(DbContextOptions<MaxiAffiliatesDbContext> o
     public DbSet<Commission> Commissions => Set<Commission>();
     public DbSet<CommissionAdjustment> CommissionAdjustments => Set<CommissionAdjustment>();
     public DbSet<PendingCredit> PendingCredits => Set<PendingCredit>();
+    public DbSet<PayoutCycle> PayoutCycles => Set<PayoutCycle>();
     public DbSet<PayoutBatch> PayoutBatches => Set<PayoutBatch>();
     public DbSet<AffiliateStoreSettings> StoreSettings => Set<AffiliateStoreSettings>();
 
@@ -92,6 +93,15 @@ public class MaxiAffiliatesDbContext(DbContextOptions<MaxiAffiliatesDbContext> o
             e.Property(x => x.PayoutMethod).HasConversion<string>().HasMaxLength(16);
             e.HasOne(x => x.Affiliate).WithMany().HasForeignKey(x => x.AffiliateId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.StoreId, x.State });
+            e.HasIndex(x => x.PayoutId);
+            e.Property(x => x.Error).HasMaxLength(512);
+            e.HasOne(x => x.Cycle).WithMany(c => c.Batches).HasForeignKey(x => x.CycleId).OnDelete(DeleteBehavior.SetNull);
+        });
+        b.Entity<PayoutCycle>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.CycleKey).HasMaxLength(64);
+            e.HasIndex(x => new { x.StoreId, x.CycleKey }).IsUnique();
         });
         b.Entity<AffiliateStoreSettings>(e =>
         {

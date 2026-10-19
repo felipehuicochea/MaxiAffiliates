@@ -8,6 +8,7 @@ export DOTNET_GCHeapHardLimit=0x30000000   # ~768 MB cap, shared box
 export BTCPAY_NETWORK=regtest BTCPAY_CHAINS=btc \
        BTCPAY_BTCEXPLORERURL=http://127.0.0.1:32838/ \
        BTCPAY_POSTGRES="User ID=postgres;Host=127.0.0.1;Port=39372;Database=btcpayserver" \
-       BTCPAY_BIND=127.0.0.1:14142 BTCPAY_DATADIR="$ROOT/dev/.btcpay-data"
+       BTCPAY_BIND=127.0.0.1:14142 BTCPAY_DATADIR="$ROOT/dev/.btcpay-data" \
+       BTCPAY_SSRFEXCEPTIONS=127.0.0.1:14142   # dev only: lets the regtest LNURL (served by this same server) resolve for LN payouts
 cd "$ROOT/submodules/btcpayserver/BTCPayServer"
 exec env "BTCPAY_ALLOW-ADMIN-REGISTRATION=true" "BTCPAY_DISABLE-REGISTRATION=false" dotnet bin/Debug/net10.0/BTCPayServer.dll

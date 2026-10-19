@@ -56,3 +56,19 @@ public class CommissionsViewModel
     public System.Collections.Generic.Dictionary<string, long> Adjustments { get; set; } = new();
     public long MinPayoutSats { get; set; }
 }
+
+public class PayoutsViewModel
+{
+    public string StoreId { get; set; } = null!;
+    public AffiliateStoreSettings Settings { get; set; } = null!;
+    public System.DateTimeOffset NextCycle { get; set; }
+    public PayoutCycle[] Cycles { get; set; } = [];
+    public BTCPayServer.Plugins.MaxiAffiliates.Services.AffiliateBalance[] Balances { get; set; } = [];
+}
+
+public class PayoutCycleViewModel
+{
+    public string StoreId { get; set; } = null!;
+    public PayoutCycle Cycle { get; set; } = null!;
+    public BTCPayServer.Plugins.MaxiAffiliates.Services.PayoutCycleService.BatchRow[] Rows { get; set; } = [];
+}

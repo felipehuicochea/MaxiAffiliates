@@ -7,11 +7,11 @@ using Microsoft.Extensions.Logging;
 
 namespace BTCPayServer.Plugins.MaxiAffiliates.Services;
 
-public record MaintenanceRun(int Retried, int Credited, int Matured);
+public record MaintenanceRun(int Retried, int Credited, int Matured, int Cycles = 0);
 
-/// <summary>Every 10 minutes: retry credits that were waiting for a rate, then mature commissions whose hold period ended.</summary>
+/// <summary>Every 10 minutes: retry credits waiting for a rate, mature commissions whose hold ended, run due payout cycles.</summary>
 public class CommissionMaintenanceService(
-    CommissionEngine engine, CommissionLedger ledger, InvoiceCommissionMapper mapper, InvoiceRepository invoices,
+    CommissionEngine engine, CommissionLedger ledger, PayoutCycleService cycles, InvoiceCommissionMapper mapper, InvoiceRepository invoices,
     ILogger<CommissionMaintenanceService> logger) : BackgroundService
 {
     public static readonly TimeSpan Interval = TimeSpan.FromMinutes(10);
@@ -46,7 +46,12 @@ public class CommissionMaintenanceService(
             }
             var matured = await ledger.MatureDue(storeId, ct);
             if (matured > 0) logger.LogInformation("MaxiAffiliates: {Count} commissions became payable", matured);
-            return new(retried, credited, matured);
+            var open = await cycles.OpenPayoutIds(storeId, ct);
+            if (open.Length > 0)
+                foreach (var (id, st) in await mapper.PayoutStates(open, ct))
+                    await cycles.OnPayoutState(id, st, ct);
+            var ran = storeId is null ? await cycles.RunScheduled(ct) : 0; // scheduled cycles only from the timer
+            return new(retried, credited, matured, ran);
         }
         finally { _lock.Release(); }
     }

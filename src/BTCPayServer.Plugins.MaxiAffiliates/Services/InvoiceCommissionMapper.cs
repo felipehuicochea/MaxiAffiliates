@@ -58,6 +58,12 @@ public class InvoiceCommissionMapper(StoreRepository stores, ApplicationDbContex
         return pp is null ? null : (pp.Limit, pp.Currency);
     }
 
+    public async Task<System.Collections.Generic.Dictionary<string, BTCPayServer.Client.Models.PayoutState>> PayoutStates(string[] payoutIds, CancellationToken ct)
+    {
+        await using var ctx = appDb.CreateContext();
+        return await ctx.Payouts.AsNoTracking().Where(p => payoutIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id, p => p.State, ct);
+    }
+
     public async Task<string?> StoreOfSubscriber(long subscriberId, CancellationToken ct)
     {
         await using var ctx = appDb.CreateContext();

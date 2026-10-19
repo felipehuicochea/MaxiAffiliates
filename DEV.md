@@ -62,6 +62,16 @@ Screenshots: `docs/screens/m4/`.
 ```
 Screenshots: `docs/screens/m5/`.
 
+## M6 acceptance (payout cycle, report/CSV, LN + on-chain payouts)
+```bash
+sudo docker compose -f dev/docker-compose.yml -p maxiaff-regtest --profile ln up -d   # + 2 CLN nodes, 256 MB each
+python3 dev/ln_setup.py                          # merchant -> customer channel
+~/.venvs/pw/bin/python dev/acceptance_m6.py      # 17 checks (runs dev/m6_setup.py: store LN, hot wallet, processors)
+sudo docker compose -f dev/docker-compose.yml -p maxiaff-regtest --profile ln stop    # when done
+```
+The M6 setup replaces the dev store's watch-only wallet with a hot wallet (regtest) once; marker file in `dev/.btcpay-data`.
+Screenshots: `docs/screens/m6/`.
+
 ## Migrations
 The plugin project doesn't copy BTCPay assemblies, so `dotnet ef` uses the helper startup project `dev/MaxiAffiliates.DesignTime`. It needs the dev Postgres running.
 ```bash
