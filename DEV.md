@@ -21,6 +21,7 @@ Ports (127.0.0.1 only): Postgres 39372, bitcoind RPC 43782, NBXplorer 32838. The
 ```bash
 dotnet build src/BTCPayServer.Plugins.MaxiAffiliates -m:2
 dotnet build tests/BTCPayServer.Plugins.MaxiAffiliates.Tests -m:2
+dotnet build-server shutdown   # after building: frees ~2 GB (Roslyn server + MSBuild nodes) on the shared box
 tests/BTCPayServer.Plugins.MaxiAffiliates.Tests/bin/Debug/net10.0/BTCPayServer.Plugins.MaxiAffiliates.Tests    # xUnit v3 runner
 #   integration tests need the Postgres from the stack; filter with: -trait- "Category=Integration"
 ```
