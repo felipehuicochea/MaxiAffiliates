@@ -16,3 +16,23 @@
 - Click model is **hard-coded to first-click with a 30-day cookie** (`maxiaff_ref`). It lives behind `IAttributionStrategy` (`FirstClickAttributionStrategy`, `AttributionDefaults.CookieLifetime`).
 - A later first-vs-last-click store setting only needs a new strategy implementation plus a setting field and a migration. Callers already depend on the interface.
 - Once a customer is bound, the binding is permanent per store (DB unique index). Renewals are credited to that affiliate.
+
+## M2: affiliates and admin
+- **Public signup:** `GET/POST /plugins/maxiaffiliates/{storeId}/signup`, anonymous with antiforgery.
+  - Email is normalized to lower case and must be unique per store.
+  - Payout method must be enabled in the store settings.
+  - Payout destination: a Lightning address (`name@domain`) or LNURL, or an on-chain address checked against the server's network (NBitcoin).
+  - Each affiliate gets an 8-character code from an unambiguous alphabet.
+  - New affiliates start as Pending, or Active if the store's `AutoApproveAffiliates` is on.
+- **Admin list:** `GET /stores/{storeId}/plugins/maxiaffiliates/affiliates` with status filter and search. Store nav item "Affiliates" in `store-integrations-nav`.
+- **Actions:** `POST .../affiliates/{id}/{op}` where op is Approve, Suspend, Reactivate or Ban. Allowed transitions:
+  - Pending → Active
+  - Active ⇄ Suspended
+  - any → Banned (terminal, confirm dialog)
+  - Actions are store-scoped.
+- **Permissions:** `btcpay.store.canviewaffiliates` (included by CanViewStoreSettings) and `btcpay.store.canmanageaffiliates` (included by CanModifyStoreSettings), registered as PolicyDefinitions so they show up in API-key scopes.
+- **Referral links:** only Active affiliates resolve (`AffiliateService.FindActiveByCode`), so Pending, Suspended and Banned links are ignored.
+- **Localization:**
+  - Every UI string goes through BTCPay's localizer (`text-translate="true"` / `StringLocalizer[...]`).
+  - The keys live in embedded `Resources/Translations/en.json` and are registered via `IDefaultTranslationProvider`, so they appear in Server Settings → Translations.
+  - A unit test fails if any view or controller string is missing from en.json. M8 adds es.json.

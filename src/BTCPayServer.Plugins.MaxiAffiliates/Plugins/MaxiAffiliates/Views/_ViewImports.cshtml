@@ -1,7 +1,12 @@
+@using BTCPayServer
 @using BTCPayServer.Abstractions.Extensions
 @using BTCPayServer.Abstractions.Models
 @using BTCPayServer.Plugins.MaxiAffiliates
-@using Microsoft.AspNetCore.Mvc.TagHelpers
+@using BTCPayServer.Plugins.MaxiAffiliates.Data
+@using BTCPayServer.Plugins.MaxiAffiliates.Models
+@using BTCPayServer.Plugins.MaxiAffiliates.Services
+@inject Microsoft.Extensions.Localization.IStringLocalizer StringLocalizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @addTagHelper *, BTCPayServer
-
+@addTagHelper *, BTCPayServer.Abstractions
 @namespace BTCPayServer.Plugins.MaxiAffiliates.Views

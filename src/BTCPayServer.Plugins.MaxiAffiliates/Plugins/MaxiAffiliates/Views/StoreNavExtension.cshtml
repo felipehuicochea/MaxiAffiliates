@@ -1,0 +1,10 @@
+@model BTCPayServer.Components.MainNav.MainNavViewModel
+@if (Model.Store != null)
+{
+    <li class="nav-item" permission="@MaxiAffiliatesPolicies.CanViewAffiliates">
+        <a layout-menu-item="@Plugin.Area" asp-area="@Plugin.Area" asp-controller="UIAffiliatesAdmin" asp-action="Index" asp-route-storeId="@Model.Store.Id" id="menu-maxiaffiliates">
+            <vc:icon symbol="nav-reporting" />
+            <span text-translate="true">Affiliates</span>
+        </a>
+    </li>
+}

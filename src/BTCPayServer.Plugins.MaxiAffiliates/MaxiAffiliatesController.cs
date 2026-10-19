@@ -10,16 +10,9 @@ using Microsoft.EntityFrameworkCore;
 namespace BTCPayServer.Plugins.MaxiAffiliates;
 
 [Area(Plugin.Area)]
-[Authorize(AuthenticationSchemes = AuthenticationSchemes.Cookie, Policy = Policies.CanViewProfile)]
+[AllowAnonymous]
 public class MaxiAffiliatesController(MaxiAffiliatesDbContext db) : Controller
 {
-    [HttpGet("~/plugins/maxiaffiliates")]
-    public async Task<IActionResult> Index()
-    {
-        ViewData["AffiliateCount"] = await db.Affiliates.CountAsync();
-        return View();
-    }
-
     /// <summary>Anonymous dev/ops probe: plugin loaded + schema migrated. Exposes no store data.</summary>
     [AllowAnonymous]
     [HttpGet("~/plugins/maxiaffiliates/health")]

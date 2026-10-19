@@ -1,0 +1,56 @@
+@model AffiliatesListViewModel
+@{
+    ViewData.SetLayoutModel(new LayoutModel(Plugin.Area, StringLocalizer["Affiliates"]));
+    string Badge(AffiliateStatus s) => s switch {
+        AffiliateStatus.Active => "bg-success", AffiliateStatus.Pending => "bg-warning text-dark",
+        AffiliateStatus.Suspended => "bg-secondary", _ => "bg-danger" };
+}
+<div class="sticky-header">
+  <h2>@ViewData["Title"]</h2>
+</div>
+<partial name="_StatusMessage" />
+<p class="text-secondary">@StringLocalizer["Public signup page:"] <a href="@Model.SignupUrl" id="maxiaff-signup-url" target="_blank" rel="noopener">@Model.SignupUrl</a></p>
+<form method="get" class="d-flex flex-wrap gap-2 mb-3">
+  <select name="status" class="form-select w-auto" asp-items="Html.GetEnumSelectList<AffiliateStatus>().Select(i => { i.Value = i.Text; i.Text = StringLocalizer[i.Text]; i.Selected = Model.Status?.ToString() == i.Value; return i; })">
+    <option value="" text-translate="true">All statuses</option>
+  </select>
+  <input name="search" value="@Model.Search" class="form-control w-auto" placeholder="@StringLocalizer["Search email, name or code"]" />
+  <button class="btn btn-secondary" type="submit" text-translate="true">Filter</button>
+</form>
+@if (Model.Affiliates.Length == 0)
+{
+  <p class="text-secondary" text-translate="true">No affiliates yet.</p>
+}
+else
+{
+<div class="table-responsive">
+<table class="table table-hover" id="maxiaff-affiliates">
+  <thead><tr>
+    <th text-translate="true">Email</th><th text-translate="true">Name</th><th text-translate="true">Code</th>
+    <th text-translate="true">Payout</th><th text-translate="true">Status</th><th text-translate="true">Created</th><th class="text-end" text-translate="true">Actions</th>
+  </tr></thead>
+  <tbody>
+  @foreach (var a in Model.Affiliates)
+  {
+    <tr data-affiliate="@a.Email">
+      <td>@a.Email</td><td>@a.Name</td><td><code>@a.Code</code></td>
+      <td><span>@StringLocalizer[a.PayoutMethod == PayoutMethodKind.Lightning ? "Lightning" : "On-chain"]</span><br/><small class="text-secondary text-break">@a.PayoutDestination</small></td>
+      <td><span class="badge @Badge(a.Status)">@StringLocalizer[a.Status.ToString()]</span></td>
+      <td>@a.CreatedAt.ToString("yyyy-MM-dd")</td>
+      <td class="text-end">
+        <form method="post" class="d-inline-flex gap-1" permission="@MaxiAffiliatesPolicies.CanManageAffiliates">
+          @foreach (var act in new[] { AffiliateAction.Approve, AffiliateAction.Reactivate, AffiliateAction.Suspend, AffiliateAction.Ban })
+          {
+            if (AffiliateService.Transition(a.Status, act) is null) continue;
+            var css = act == AffiliateAction.Ban ? "btn-outline-danger" : act == AffiliateAction.Suspend ? "btn-outline-secondary" : "btn-success";
+            <button type="submit" class="btn btn-sm @css" formaction="@Url.Action("Act", "UIAffiliatesAdmin", new { storeId = Model.StoreId, affiliateId = a.Id, op = act })" data-action="@act"
+                    data-confirm="@(act == AffiliateAction.Ban ? StringLocalizer["Ban this affiliate? This cannot be undone."].Value : null)" onclick="return !this.dataset.confirm || confirm(this.dataset.confirm)">@StringLocalizer[act.ToString()]</button>
+          }
+        </form>
+      </td>
+    </tr>
+  }
+  </tbody>
+</table>
+</div>
+}

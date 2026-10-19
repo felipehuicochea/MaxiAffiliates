@@ -35,7 +35,13 @@ nohup dev/run-btcpay.sh > /tmp/btcpay.log 2>&1 &     # http://127.0.0.1:14142, G
 curl -s 127.0.0.1:14142/plugins/maxiaffiliates/health  # plugin + migration status (JSON)
 pkill -f BTCPayServer.dll                  # stop
 ```
-The dev admin login (regtest only) is in `dev/.btcpay-data/dev-admin.txt`, which is gitignored and not printed. Plugin page: `/plugins/maxiaffiliates`; Server Settings → Plugins lists it.
+The dev admin login (regtest only) is in `dev/.btcpay-data/dev-admin.txt`, which is gitignored and not printed. Admin: store menu → Affiliates (`/stores/{storeId}/plugins/maxiaffiliates/affiliates`). Public signup: `/plugins/maxiaffiliates/{storeId}/signup`.
+
+## M2 acceptance walk-through + screenshots
+```bash
+python3 -m venv ~/.venvs/pw && ~/.venvs/pw/bin/pip install playwright   # once; uses the installed google-chrome
+~/.venvs/pw/bin/python dev/screens_m2.py    # needs stack + server running; writes docs/screens/m2/*.png
+```
 
 ## Migrations
 The plugin project doesn't copy BTCPay assemblies, so `dotnet ef` uses the helper startup project `dev/MaxiAffiliates.DesignTime`. It needs the dev Postgres running.

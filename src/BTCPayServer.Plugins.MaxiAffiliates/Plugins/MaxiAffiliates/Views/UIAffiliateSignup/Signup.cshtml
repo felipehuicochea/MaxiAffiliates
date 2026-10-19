@@ -1,0 +1,41 @@
+@model SignupViewModel
+@{
+    Layout = "_LayoutSimple";
+    ViewData["Title"] = StringLocalizer["Become an affiliate of {0}", Model.StoreName];
+}
+<div class="row justify-content-center my-5">
+  <div class="col-md-8 col-lg-6">
+    <h1 class="h3 mb-2">@ViewData["Title"]</h1>
+    <p class="text-secondary" text-translate="true">Share your referral link and earn a commission in bitcoin on every sale you refer.</p>
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <form method="post" id="maxiaff-signup">
+      <div class="form-group mb-3">
+        <label asp-for="Email" class="form-label" text-translate="true">Email</label>
+        <input asp-for="Email" type="email" class="form-control" required />
+        <span asp-validation-for="Email" class="text-danger"></span>
+      </div>
+      <div class="form-group mb-3">
+        <label asp-for="Name" class="form-label" text-translate="true">Name (optional)</label>
+        <input asp-for="Name" class="form-control" maxlength="100" />
+      </div>
+      <div class="form-group mb-3">
+        <label class="form-label" text-translate="true">Payout method</label>
+        @if (Model.LightningEnabled)
+        {
+          <div class="form-check"><input class="form-check-input" type="radio" asp-for="PayoutMethod" value="Lightning" id="pm-ln" /><label class="form-check-label" for="pm-ln" text-translate="true">Lightning (Lightning address or LNURL)</label></div>
+        }
+        @if (Model.OnChainEnabled)
+        {
+          <div class="form-check"><input class="form-check-input" type="radio" asp-for="PayoutMethod" value="OnChain" id="pm-oc" /><label class="form-check-label" for="pm-oc" text-translate="true">On-chain (Bitcoin address)</label></div>
+        }
+        <span asp-validation-for="PayoutMethod" class="text-danger"></span>
+      </div>
+      <div class="form-group mb-4">
+        <label asp-for="PayoutDestination" class="form-label" text-translate="true">Payout address</label>
+        <input asp-for="PayoutDestination" class="form-control" required placeholder="name@wallet.com / bc1q…" />
+        <span asp-validation-for="PayoutDestination" class="text-danger"></span>
+      </div>
+      <button type="submit" class="btn btn-primary" id="maxiaff-submit" text-translate="true">Sign up</button>
+    </form>
+  </div>
+</div>

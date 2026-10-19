@@ -1,0 +1,19 @@
+@model SignupDoneViewModel
+@{
+    Layout = "_LayoutSimple";
+    ViewData["Title"] = StringLocalizer["Thank you for signing up"];
+}
+<div class="row justify-content-center my-5">
+  <div class="col-md-8 col-lg-6" id="maxiaff-signup-done" data-status="@Model.Status">
+    <h1 class="h3 mb-3">@ViewData["Title"]</h1>
+    @if (Model.Status == AffiliateStatus.Active)
+    {
+      <p text-translate="true">Your affiliate account is active.</p>
+    }
+    else
+    {
+      <p text-translate="true">Your application was received and is waiting for approval by the store.</p>
+    }
+    <p>@StringLocalizer["Your referral code: {0}", Model.Code]</p>
+  </div>
+</div>
