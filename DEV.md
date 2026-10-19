@@ -93,3 +93,6 @@ nohup dev/run-btcpay.sh > /tmp/btcpay.log 2>&1 &
 ~/.venvs/pw/bin/python dev/acceptance_m7.py      # 28 checks, screenshots in docs/screens/m7 (tokens masked)
 ```
 The script points the store's SMTP at Mailpit (127.0.0.1:39025) for the magic-link part and clears it again at the end.
+
+## M8 Spanish screenshots
+`~/.venvs/pw/bin/python dev/screens_m8.py` (stack with `--profile mail` + BTCPay running): selects the "Spanish" dictionary, captures `docs/screens/m8/`, switches back to English. Review table: `docs/TRANSLATIONS_REVIEW.md`.

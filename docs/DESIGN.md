@@ -154,3 +154,14 @@ network and enabled methods; already approved payouts keep their snapshot addres
 **Admin reports.** Two `ReportProvider`s appear in BTCPay's Reporting page (and `POST /api/v1/stores/{id}/reports`), with
 BTCPay's built-in filters, charts and CSV export: *Affiliate commissions* (per commission: affiliate, invoice, plan, sale,
 commission, sats, clawback, status, payable/paid dates, payout id) and *Affiliate payouts* (per batch).
+
+## M8: Spanish (es)
+
+BTCPay localizes with one server-wide dictionary (Server Settings → Translations), and plugins can only contribute the
+English defaults (`IDefaultTranslationProvider`). So the plugin embeds `Resources/Translations/es.json` and
+`SpanishTranslationSeeder` inserts those sentences into every Spanish dictionary (`Spanish*`, `Español*`, `es`, `es-*`),
+creating a "Spanish" dictionary (fallback English, source Custom) when none exists. Inserts are `ON CONFLICT DO NOTHING`,
+so admin edits made in BTCPay's translation editor win. It re-runs every 15 minutes because installing/updating BTCPay's
+Spanish language pack rewrites the dictionary and would drop plugin sentences. Emails (magic link, address-change notice)
+use the same localizer, so they follow the server language. CSV export headers stay English (machine-readable).
+Tests: es.json has exactly the keys of en.json, no empty or untranslated values (except brand/unit words), placeholders preserved.

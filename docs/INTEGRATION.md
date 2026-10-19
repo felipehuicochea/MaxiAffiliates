@@ -1,6 +1,6 @@
 # MaxiAffiliates: website integration (M3)
 
-All examples use `https://BTCPAY` (your BTCPay Server) and `STORE_ID`.
+All examples use `https://BTCPAY` (your BTCPay Server) and `STORE_ID`. En español: [INTEGRATION.es.md](INTEGRATION.es.md).
 
 ## 1. Referral links
 `https://BTCPAY/aff/STORE_ID/CODE`

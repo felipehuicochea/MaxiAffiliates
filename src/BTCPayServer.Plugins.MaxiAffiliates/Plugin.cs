@@ -47,6 +47,8 @@ public class Plugin : BaseBTCPayServerPlugin
         services.AddSingleton<CommissionMaintenanceService>();
         services.AddHostedService(sp => sp.GetRequiredService<CommissionMaintenanceService>());
         services.AddTranslationProvider<MaxiAffiliatesTranslationProvider>();
+        services.AddSingleton<SpanishTranslationSeeder>();
+        services.AddHostedService(sp => sp.GetRequiredService<SpanishTranslationSeeder>());
         services.AddUIExtension("store-integrations-nav", $"{ViewsDirectory}/StoreNavExtension.cshtml");
         services.AddPolicyDefinitions(
             new PolicyDefinition(MaxiAffiliatesPolicies.CanViewAffiliates,
