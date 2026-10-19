@@ -22,6 +22,8 @@ public class MaxiAffiliatesDbContext(DbContextOptions<MaxiAffiliatesDbContext> o
     public DbSet<PayoutCycle> PayoutCycles => Set<PayoutCycle>();
     public DbSet<PayoutBatch> PayoutBatches => Set<PayoutBatch>();
     public DbSet<AffiliateStoreSettings> StoreSettings => Set<AffiliateStoreSettings>();
+    public DbSet<CallbackSettings> CallbackSettings => Set<CallbackSettings>();
+    public DbSet<CallbackDelivery> CallbackDeliveries => Set<CallbackDelivery>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -121,6 +123,23 @@ public class MaxiAffiliatesDbContext(DbContextOptions<MaxiAffiliatesDbContext> o
             e.Property(x => x.DefaultPercent).HasPrecision(9, 4);
             e.Property(x => x.BaseCurrencyOverride).HasMaxLength(10);
             e.Property(x => x.LandingUrl).HasMaxLength(2048);
+        });
+        b.Entity<CallbackSettings>(e =>
+        {
+            e.HasKey(x => x.StoreId);
+            e.Property(x => x.Url).HasMaxLength(2048);
+        });
+        b.Entity<CallbackDelivery>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.EventId).HasMaxLength(128);
+            e.Property(x => x.LastError).HasMaxLength(512);
+            // One automatic delivery per event: duplicate settle events for an invoice collapse here.
+            e.HasIndex(x => new { x.StoreId, x.EventId }).IsUnique().HasFilter("\"RedeliveryOfId\" IS NULL");
+            e.HasIndex(x => new { x.Status, x.NextAttemptAt });
+            e.HasIndex(x => new { x.StoreId, x.CreatedAt });
         });
     }
 }

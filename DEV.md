@@ -108,3 +108,6 @@ pkill -f bin/Release/net10.0/BTCPayServer.dll; nohup dev/run-btcpay-fresh.sh > /
 ~/.venvs/pw/bin/python dev/fresh_install.py verify               # 8 checks
 ```
 Security review: `docs/SECURITY_REVIEW.md`; dependency audit: `dotnet list src/BTCPayServer.Plugins.MaxiAffiliates package --vulnerable --include-transitive`.
+
+## v1 order callback: acceptance
+`dev/acceptance_callbacks.py` (dev server running, Debug build so a loopback receiver is allowed): starts a receiver on 127.0.0.1:14171 that verifies every signature and answers 500 to the first attempt of each settled event, then drives the Order callback tab (secret, URL, test send), pays a plan checkout with an affiliate and a plain invoice on regtest, and checks retry, payload, log and redelivery. It disables the callback again at the end. `dev/fresh_install.py verify` additionally checks that the Release package refuses http and private/loopback callback URLs.

@@ -41,3 +41,36 @@ If your backend creates checkouts itself (Greenfield `POST /api/v1/plan-checkout
 "newSubscriberMetadata": { "maxiaffRef": "CODE" }
 ```
 (For plain invoices use `metadata.maxiaffRef`.) The plugin endpoint also adds `maxiaffAffiliateId`. Attribution happens when the invoice settles (M4), which re-checks the affiliate status and self-referral against the buyer email.
+
+## 5. Order confirmation callback (seller site)
+
+In the plugin admin, **Order callback** tab: generate a signing secret (copy it, it is shown once), enter your callback URL (https, public host), enable it and save. **Send test event** sends a `"type":"test"` event. Every settled invoice or subscription payment of the store then produces one event, whether or not an affiliate was involved. Payload fields: see `docs/DESIGN.md` (v1 addition).
+
+Headers: `MaxiAff-Signature: t=<unix seconds>,v1=<hex>`, `MaxiAff-Event-Id`, `MaxiAff-Delivery-Id`.
+
+**Verify every request** before trusting it:
+1. Parse `t` and `v1` from `MaxiAff-Signature`.
+2. Reject if `|now - t| > 300` seconds (replay protection).
+3. Compute `HMAC-SHA256(secret, "<t>." + raw request body)` as lowercase hex and compare with `v1` in constant time. Use the raw bytes, not re-serialized JSON.
+4. Deduplicate on `eventId`: retries and manual redeliveries reuse it.
+5. Answer `2xx` quickly. Network errors, timeouts (15 s), `408`, `425`, `429` and `5xx` are retried after 10 s, 30 s, 90 s, 4.5 min, 13.5 min, 40 min and 1 h (8 attempts in total); other `4xx` answers are final. Redirects are not followed.
+
+```php
+$raw = file_get_contents('php://input');
+parse_str(str_replace(',', '&', $_SERVER['HTTP_MAXIAFF_SIGNATURE'] ?? ''), $sig);
+$ok = isset($sig['t'], $sig['v1']) && abs(time() - (int)$sig['t']) <= 300
+   && hash_equals(hash_hmac('sha256', $sig['t'] . '.' . $raw, getenv('MAXIAFF_CALLBACK_SECRET')), $sig['v1']);
+if (!$ok) { http_response_code(401); exit; }
+$event = json_decode($raw, true);   // then: if (already_processed($event['eventId'])) { http_response_code(200); exit; }
+```
+
+```python
+import hmac, hashlib, time
+def verify(secret: str, header: str, raw: bytes) -> bool:
+    parts = dict(p.strip().split("=", 1) for p in header.split(",") if "=" in p)
+    t = int(parts.get("t", "0"))
+    mac = hmac.new(secret.encode(), f"{t}.".encode() + raw, hashlib.sha256).hexdigest()
+    return abs(time.time() - t) <= 300 and hmac.compare_digest(mac, parts.get("v1", ""))
+```
+
+Only need "invoice settled" without affiliate fields? BTCPay's own store webhooks (Store → Webhooks) also work; the plugin callback adds plan/offering/subscriber resolution, the affiliate code and the commission outcome, and a timestamped signature.

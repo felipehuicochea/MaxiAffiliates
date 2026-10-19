@@ -216,3 +216,38 @@ public class AffiliateAccessToken
     public DateTimeOffset? UsedAt { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }
 }
+
+/// <summary>Per-store seller-site order confirmation callback (signed POST on every settled payment).</summary>
+public class CallbackSettings
+{
+    public string StoreId { get; set; } = null!;
+    public bool Enabled { get; set; }
+    public string? Url { get; set; }
+    /// <summary>HMAC secret, encrypted with ASP.NET Data Protection. Never logged, shown once when generated.</summary>
+    public string? SecretProtected { get; set; }
+    public DateTimeOffset? SecretCreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+/// <summary>One delivery of a callback event (automatic, test or manual redelivery). Retried with backoff.</summary>
+public class CallbackDelivery
+{
+    public string Id { get; set; } = Ids.New();
+    public string StoreId { get; set; } = null!;
+    /// <summary>Idempotency key shared by every delivery (and redelivery) of the same event.</summary>
+    public string EventId { get; set; } = null!;
+    public CallbackEventKind Kind { get; set; }
+    /// <summary>Set on manual redeliveries: the delivery this one repeats.</summary>
+    public string? RedeliveryOfId { get; set; }
+    public string InvoiceId { get; set; } = "";
+    /// <summary>Event facts captured at settle time (JSON); the final payload is frozen into <see cref="Payload"/> on the first attempt.</summary>
+    public string Facts { get; set; } = "{}";
+    public string? Payload { get; set; }
+    public CallbackDeliveryStatus Status { get; set; }
+    public int Attempts { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset NextAttemptAt { get; set; }
+    public DateTimeOffset? LastAttemptAt { get; set; }
+    public int? LastHttpStatus { get; set; }
+    public string? LastError { get; set; }
+}

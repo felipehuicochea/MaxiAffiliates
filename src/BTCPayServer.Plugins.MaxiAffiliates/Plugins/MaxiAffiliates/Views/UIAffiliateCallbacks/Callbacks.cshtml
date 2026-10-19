@@ -1,0 +1,90 @@
+@model CallbacksViewModel
+@{
+    ViewData.SetLayoutModel(new LayoutModel(Plugin.Area, StringLocalizer["Order confirmation callback"]));
+    var s = Model.Settings;
+    string Badge(CallbackDeliveryStatus st) => st switch { CallbackDeliveryStatus.Succeeded => "bg-success", CallbackDeliveryStatus.Failed => "bg-danger", _ => "bg-warning text-dark" };
+    string StatusKey(CallbackDeliveryStatus st) => st switch { CallbackDeliveryStatus.Succeeded => "Delivered", CallbackDeliveryStatus.Failed => "Failed", _ => "Retrying" };
+}
+<div class="sticky-header"><h2>@ViewData["Title"]</h2></div>
+<partial name="_StatusMessage" />
+<partial name="UIAffiliateSettings/_Tabs" />
+<p class="text-secondary" style="max-width:52rem" text-translate="true">When an invoice or subscription payment settles, the plugin sends a signed POST to your site with the order, plan, subscriber, amount and the affiliate (if any). Use it to confirm orders on your site. Every delivery is logged below.</p>
+
+@if (Model.NewSecret is not null)
+{
+  <div class="alert alert-warning" id="maxiaff-callback-new-secret-box">
+    <p class="mb-2 fw-semibold" text-translate="true">Copy your signing secret now. It will not be shown again.</p>
+    <code id="maxiaff-callback-new-secret" class="user-select-all">@Model.NewSecret</code>
+  </div>
+}
+
+<div class="row g-4">
+ <div class="col-lg-7">
+  <form method="post" asp-action="SaveCallback" asp-route-storeId="@Model.StoreId" id="maxiaff-callback-form" permission="@MaxiAffiliatesPolicies.CanManageAffiliates">
+    <div class="form-check form-switch mb-3">
+      <input type="checkbox" class="form-check-input" name="enabled" value="true" id="maxiaff-callback-enabled" @(s.Enabled ? "checked" : "") />
+      <label class="form-check-label" for="maxiaff-callback-enabled" text-translate="true">Send order confirmation callbacks</label>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="maxiaff-callback-url" text-translate="true">Callback URL</label>
+      <input type="url" class="form-control" name="url" id="maxiaff-callback-url" value="@s.Url" maxlength="2048" placeholder="https://shop.example.com/btcpay/callback" />
+      @if (Model.HttpsOnly)
+      {
+        <div class="form-text" text-translate="true">Must be https and a public host. Redirects are not followed.</div>
+      }
+    </div>
+    <button type="submit" class="btn btn-primary" id="maxiaff-callback-save" text-translate="true">Save</button>
+  </form>
+ </div>
+ <div class="col-lg-5">
+  <h5 text-translate="true">Signing secret</h5>
+  <p class="text-secondary" id="maxiaff-callback-secret-state">
+    @if (s.HasSecret) { @StringLocalizer["Set on {0}. Regenerating it invalidates the old one immediately.", s.SecretCreatedAt?.ToString("yyyy-MM-dd HH:mm") + " UTC"] }
+    else { @StringLocalizer["No secret yet. Generate one before enabling the callback."] }
+  </p>
+  <div class="d-flex gap-2">
+    <form method="post" asp-action="RegenerateSecret" asp-route-storeId="@Model.StoreId" permission="@MaxiAffiliatesPolicies.CanManageAffiliates">
+      <button type="submit" class="btn btn-secondary" id="maxiaff-callback-secret">@(s.HasSecret ? StringLocalizer["Regenerate secret"] : StringLocalizer["Generate secret"])</button>
+    </form>
+    <form method="post" asp-action="SendTest" asp-route-storeId="@Model.StoreId" permission="@MaxiAffiliatesPolicies.CanManageAffiliates">
+      <button type="submit" class="btn btn-outline-primary" id="maxiaff-callback-test" text-translate="true">Send test event</button>
+    </form>
+  </div>
+ </div>
+</div>
+
+<h4 class="mt-5" text-translate="true">Delivery log</h4>
+@if (Model.Deliveries.Length == 0)
+{
+  <p class="text-secondary" text-translate="true">No deliveries yet.</p>
+}
+else
+{
+<div class="table-responsive">
+<table class="table" id="maxiaff-callback-log">
+  <thead><tr>
+    <th text-translate="true">Date</th><th text-translate="true">Event</th><th text-translate="true">Invoice</th><th text-translate="true">Status</th>
+    <th class="text-end" text-translate="true">Attempts</th><th text-translate="true">Last response</th><th></th>
+  </tr></thead>
+  <tbody>
+  @foreach (var d in Model.Deliveries)
+  {
+    <tr data-delivery="@d.Id" data-event="@d.EventId" data-status="@d.Status" data-attempts="@d.Attempts" data-http="@d.LastHttpStatus">
+      <td class="text-nowrap">@d.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss") UTC</td>
+      <td><code>@d.EventId</code>@if (d.RedeliveryOfId is not null) { <span class="badge bg-light text-dark ms-1" text-translate="true">redelivery</span> }@if (d.Kind == CallbackEventKind.Test) { <span class="badge bg-info text-dark ms-1" text-translate="true">test</span> }</td>
+      <td>@d.InvoiceId</td>
+      <td><span class="badge @Badge(d.Status)">@StringLocalizer[StatusKey(d.Status)]</span>
+        @if (d.Status == CallbackDeliveryStatus.Pending && d.Attempts > 0) { <div class="small text-secondary">@StringLocalizer["Next attempt: {0}", d.NextAttemptAt.ToString("HH:mm:ss") + " UTC"]</div> }</td>
+      <td class="text-end">@d.Attempts</td>
+      <td class="small">@(d.LastHttpStatus?.ToString() ?? "")@(d.LastError is null ? "" : " " + d.LastError)</td>
+      <td class="text-end">
+        <form method="post" asp-action="Redeliver" asp-route-storeId="@Model.StoreId" asp-route-deliveryId="@d.Id" permission="@MaxiAffiliatesPolicies.CanManageAffiliates">
+          <button type="submit" class="btn btn-link btn-sm p-0 maxiaff-redeliver" text-translate="true">Redeliver</button>
+        </form>
+      </td>
+    </tr>
+  }
+  </tbody>
+</table>
+</div>
+}

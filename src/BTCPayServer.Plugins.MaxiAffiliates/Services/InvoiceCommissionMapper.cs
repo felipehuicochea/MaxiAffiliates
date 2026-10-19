@@ -17,7 +17,28 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Services;
 /// Uses core internals (InvoiceEntity, SUBS# tag, PlanCheckoutData): re-verify on BTCPay upgrades.
 /// </summary>
 public class InvoiceCommissionMapper(StoreRepository stores, ApplicationDbContextFactory appDb, RateFetcher rateFetcher, DefaultRulesCollection defaultRules)
+    : ISubscriptionFacts
 {
+    /// <summary>Plan / offering / subscriber / customer ids for a callback; re-reads the plan checkout because the subscriber is created on settlement.</summary>
+    public async Task<SubscriptionFacts> Resolve(string storeId, string invoiceId, string? planId, string? subscriberId, CancellationToken ct)
+    {
+        await using var ctx = appDb.CreateContext();
+        var co = await ctx.PlanCheckouts.AsNoTracking().Where(c => c.InvoiceId == invoiceId).Select(c => new { c.PlanId, c.SubscriberId }).FirstOrDefaultAsync(ct);
+        planId = co?.PlanId ?? planId;
+        long? subId = co?.SubscriberId ?? (long.TryParse(subscriberId, out var l) ? l : null);
+        string? offeringId = null, customerId = null;
+        if (subId is { } sid)
+        {
+            var sub = await ctx.Subscribers.AsNoTracking().Where(x => x.Id == sid && x.Offering.App.StoreDataId == storeId)
+                .Select(x => new { x.OfferingId, x.CustomerId, x.PlanId }).FirstOrDefaultAsync(ct);
+            if (sub is null) subId = null;
+            else { offeringId = sub.OfferingId; customerId = sub.CustomerId; planId ??= sub.PlanId; }
+        }
+        if (offeringId is null && planId is not null)
+            offeringId = await ctx.Plans.AsNoTracking().Where(p => p.Id == planId && p.Offering.App.StoreDataId == storeId).Select(p => p.OfferingId).FirstOrDefaultAsync(ct);
+        return new(planId, offeringId, subId?.ToString(System.Globalization.CultureInfo.InvariantCulture), customerId);
+    }
+
     public async Task<SettledInvoice?> Map(InvoiceEntity invoice)
     {
         var store = await stores.FindStore(invoice.StoreId);

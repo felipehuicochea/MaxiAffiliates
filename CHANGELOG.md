@@ -27,6 +27,7 @@ First release candidate for BTCPay Server 2.4.5+.
 - **Affiliate panel:** passwordless sign-in by email magic link, or an admin-issued link; stats, balance, commissions, payout history; payout address change with notice email.
 - **Reports:** "Affiliate commissions" and "Affiliate payouts" in BTCPay Reporting.
 - **Languages:** English and Spanish (neutral Latin-American); Spanish strings are seeded into BTCPay's "Spanish" dictionary.
+- **Order confirmation callback:** signed (HMAC-SHA256, timestamped) POST to a per-store URL on every settled invoice or subscription payment, with plan/offering/subscriber ids, amount, affiliate code and commission outcome; idempotent event id; retries with exponential backoff (8 attempts, capped at 1 h); delivery log with redelivery; test send; https-only/public-host guard in Release builds.
 - **Docs:** admin guide, affiliate guide (EN/ES), integration guide (EN/ES), upgrade notes, security policy.
 
 ### Security (M9 review, see `docs/SECURITY_REVIEW.md`)

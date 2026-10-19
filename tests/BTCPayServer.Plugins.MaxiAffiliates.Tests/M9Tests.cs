@@ -125,8 +125,19 @@ public class ReleaseHygieneTests
     [Fact]
     public void PluginMakesNoOutboundHttpCalls()
     {
-        var bad = Files().Where(f => f.EndsWith(".cs")).Where(f => { var t = File.ReadAllText(f); return t.Contains("HttpClient") || t.Contains("WebRequest"); }).ToArray();
+        // The seller callback (CallbackTransport.cs, plus its registration in Plugin.cs) is the only outbound HTTP, behind CallbackUrlPolicy.
+        var bad = Files().Where(f => f.EndsWith(".cs") && !f.EndsWith("/Services/CallbackTransport.cs") && !f.EndsWith("/Plugin.cs"))
+            .Where(f => { var t = File.ReadAllText(f); return t.Contains("HttpClient") || t.Contains("WebRequest"); }).ToArray();
         Assert.Empty(bad);
+        Assert.Contains("ConnectCallback", File.ReadAllText(Path.Combine(Src(), "Services", "CallbackTransport.cs")));
+        Assert.Contains("AllowAutoRedirect = false", File.ReadAllText(Path.Combine(Src(), "Services", "CallbackTransport.cs")));
+    }
+
+    [Fact]
+    public void TheOnlyDebugOnlyCodeIsTheCallbackDevException()
+    {
+        var withDebug = Files().Where(f => f.EndsWith(".cs") && !f.Contains("/Migrations/") && File.ReadAllText(f).Contains("#if DEBUG")).Select(Path.GetFileName).ToArray();
+        Assert.Equal(new[] { "CallbackUrlPolicy.cs" }, withDebug);
     }
 }
 

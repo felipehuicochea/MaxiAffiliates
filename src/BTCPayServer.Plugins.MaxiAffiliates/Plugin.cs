@@ -43,6 +43,13 @@ public class Plugin : BaseBTCPayServerPlugin
         services.AddSingleton<AffiliatePanelService>();
         services.AddReportProvider<AffiliateCommissionsReportProvider>();
         services.AddReportProvider<AffiliatePayoutsReportProvider>();
+        services.AddSingleton(CallbackUrlPolicy.Default);
+        services.AddHttpClient(HttpCallbackTransport.ClientName, c => c.Timeout = HttpCallbackTransport.Timeout)
+            .ConfigurePrimaryHttpMessageHandler(sp => HttpCallbackTransport.CreateHandler(sp.GetRequiredService<CallbackUrlPolicy>()));
+        services.AddSingleton<ICallbackTransport, HttpCallbackTransport>();
+        services.AddSingleton<ISubscriptionFacts>(sp => sp.GetRequiredService<InvoiceCommissionMapper>());
+        services.AddSingleton<CallbackService>();
+        services.AddHostedService<CallbackDispatcher>();
         services.AddHostedService<InvoiceSettledListener>();
         services.AddSingleton<CommissionMaintenanceService>();
         services.AddHostedService(sp => sp.GetRequiredService<CommissionMaintenanceService>());

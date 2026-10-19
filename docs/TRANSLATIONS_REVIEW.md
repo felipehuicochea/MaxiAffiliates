@@ -257,3 +257,43 @@ Admins can also tweak any string later in BTCPay: Server Settings → Translatio
 | 240 | weekly | cada semana |
 | 241 | monthly | cada mes |
 | 242 | Processing | En proceso |
+
+## New in v1: order confirmation callback (NEW, needs review)
+
+Terms: callback kept as *callback* (common in Latin-American dev Spanish; alternative *notificación*), signing secret → *secreto de firma*, redeliver → *reenviar*.
+
+| # | English | Español | |
+|---|---|---|---|
+| 243 | Attempts | Intentos | **NEW** |
+| 244 | Callback URL | URL de callback | **NEW** |
+| 245 | Copy your signing secret now. It will not be shown again. | Copia tu secreto de firma ahora. No se volverá a mostrar. | **NEW** |
+| 246 | Delivery log | Registro de entregas | **NEW** |
+| 247 | Event | Evento | **NEW** |
+| 248 | Event redelivered. See the delivery log below. | Evento reenviado. Consulta el registro de entregas abajo. | **NEW** |
+| 249 | Last response | Última respuesta | **NEW** |
+| 250 | Must be https and a public host. Redirects are not followed. | Debe usar https y un host público. No se siguen redirecciones. | **NEW** |
+| 251 | Next attempt: {0} | Próximo intento: {0} | **NEW** |
+| 252 | No deliveries yet. | Aún no hay entregas. | **NEW** |
+| 253 | No secret yet. Generate one before enabling the callback. | Aún no hay secreto. Genera uno antes de activar el callback. | **NEW** |
+| 254 | Order callback | Callback de pedidos | **NEW** |
+| 255 | Order confirmation callback | Callback de confirmación de pedidos | **NEW** |
+| 256 | Redeliver | Reenviar | **NEW** |
+| 257 | redelivery | reenvío | **NEW** |
+| 258 | Send order confirmation callbacks | Enviar callbacks de confirmación de pedidos | **NEW** |
+| 259 | Send test event | Enviar evento de prueba | **NEW** |
+| 260 | Set on {0}. Regenerating it invalidates the old one immediately. | Creado el {0}. Al regenerarlo, el anterior deja de funcionar de inmediato. | **NEW** |
+| 261 | Signing secret | Secreto de firma | **NEW** |
+| 262 | test | prueba | **NEW** |
+| 263 | When an invoice or subscription payment settles, the plugin sends a signed POST to your site with the order, plan, subscriber, amount and the affiliate (if any). Use it to confirm orders on your site. Every delivery is logged below. | Cuando se liquida una factura o un pago de suscripción, el plugin envía un POST firmado a tu sitio con el pedido, el plan, el suscriptor, el monto y el afiliado (si lo hay). Úsalo para confirmar pedidos en tu sitio. Cada entrega queda registrada abajo. | **NEW** |
+| 264 | Regenerate secret | Regenerar secreto | **NEW** |
+| 265 | Generate secret | Generar secreto | **NEW** |
+| 266 | Callback settings saved. | Configuración del callback guardada. | **NEW** |
+| 267 | Test event sent. See the delivery log below. | Evento de prueba enviado. Consulta el registro de entregas abajo. | **NEW** |
+| 268 | Save a callback URL first. | Primero guarda una URL de callback. | **NEW** |
+| 269 | Generate a signing secret before enabling the callback. | Genera un secreto de firma antes de activar el callback. | **NEW** |
+| 270 | Enter a valid callback URL. | Ingresa una URL de callback válida. | **NEW** |
+| 271 | The callback URL must use https. | La URL de callback debe usar https. | **NEW** |
+| 272 | The callback URL must not contain credentials or a fragment. | La URL de callback no debe contener credenciales ni un fragmento. | **NEW** |
+| 273 | The callback URL must point to a public host. | La URL de callback debe apuntar a un host público. | **NEW** |
+| 274 | Delivered | Entregado | **NEW** |
+| 275 | Retrying | Reintentando | **NEW** |

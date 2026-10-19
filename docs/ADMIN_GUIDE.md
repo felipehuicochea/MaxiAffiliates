@@ -59,6 +59,15 @@ Two permissions can be granted per store role (Store → Users → Roles):
 ## 7. Reports
 **Reporting** (store menu) gains two views: **Affiliate commissions** and **Affiliate payouts**. They have date filters, charts and CSV **Export**. Text columns are protected against spreadsheet formula injection.
 
+## 7b. Order confirmation callback (Order callback tab)
+Notifies your website when a payment settles, so it can confirm the order, with the affiliate (if any) and whether a commission was credited.
+1. **Generate secret** and copy it into your site's configuration. It is shown only once; **Regenerate secret** replaces it immediately (update your site at the same time).
+2. Enter the **Callback URL** (https, public host), switch on **Send order confirmation callbacks**, **Save**.
+3. **Send test event** and check the **Delivery log**: *Delivered* with HTTP 200 means your site verified and accepted it.
+4. Failed deliveries are retried automatically (8 attempts over about 2 hours); after that they show *Failed*. Fix your site and click **Redeliver** (same event id, so your site can ignore duplicates).
+
+Only need a plain "invoice settled" notification with no affiliate data? BTCPay's own Store → Webhooks does that too. See `docs/INTEGRATION.md` §5 for the receiver code.
+
 ## 8. Language
 The plugin ships English and Spanish. It adds its Spanish strings to a BTCPay dictionary named "Spanish" (created if missing).
 - **Turn Spanish on:** Server Settings → Translations → *Spanish* → **Select**.
@@ -78,4 +87,6 @@ The plugin ships English and Spanish. It adds its Spanish strings to a BTCPay di
 | A sale shows no commission | No referral on the checkout, a self-referral, an affiliate who is not Active, a scope already used up (first payment / first N), or a rate still pending (see Commissions). |
 | Affiliate says the sign-in email never arrived | Check store email settings; at most 3 links per 15 minutes; use **Panel link** as a fallback. |
 | Batch stuck in "Payout created" | Check Store → Payouts for a payout with `metadata.batchId`. If BTCPay stopped mid-approval, the payout may be missing. Cancel it in BTCPay to release the batch, or contact support. |
+| Callback shows *Failed* / HTTP 401 | Your site rejected the signature: wrong secret (regenerated?), or it re-serialized the JSON instead of hashing the raw body, or its clock is off by more than 5 minutes. |
+| Callback URL refused on save | Must be https and a public host; localhost, private and link-local addresses are refused. |
 | Lightning payout fails | The affiliate's Lightning address/LNURL must be reachable from your BTCPay and your node needs outbound liquidity. |

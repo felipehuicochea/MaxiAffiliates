@@ -17,6 +17,8 @@ Severity scale: **High** (direct loss of funds or account takeover), **Medium** 
 | F7 | Link-click counter | Anyone can inflate an affiliate's "link clicks" stat | Info | Accepted (display-only) |
 | F8 | Dependencies | `dotnet list package --vulnerable` reports transitive advisories in packages that BTCPay 2.4.5 itself provides (System.Security.Cryptography.Pkcs 10.0.0, Microsoft.AspNetCore.SignalR.Common 10.0.12) | Info | Host-provided; plugin ships none of them |
 
+| F9 | Outbound requests (new: order callback) | The v1 callback is the plugin's first outbound HTTP; reviewed against SSRF, replay, secret handling and double delivery | n/a | Designed in, see "Order callback" below |
+
 No High findings. Everything else in scope was reviewed and found sound (details below).
 
 ## Findings and fixes
@@ -87,8 +89,8 @@ Panel cookies are SameSite=Lax, and magic links need a POST from the confirm pag
 - The website helper script builds no HTML from input.
 - User-controlled fields (name ≤100 chars, email, destination) are always encoded.
 
-**SSRF.** The plugin makes no outbound HTTP calls. LNURL / Lightning address resolution is done by BTCPay's own payout handler with BTCPay's SSRF protection.
-The regtest-only `BTCPAY_SSRFEXCEPTIONS=127.0.0.1:14142` exists only in `dev/run-btcpay.sh`, which is not part of the package. `ReleaseHygieneTests` fails if `SSRF`, `127.0.0.1` or `localhost:` ever appears in plugin sources, or if `HttpClient` / `WebRequest` is used.
+**SSRF.** At M9 the plugin made no outbound HTTP calls; since the v1 order callback, that callback is the only one (see "Order callback" below). LNURL / Lightning address resolution is done by BTCPay's own payout handler with BTCPay's SSRF protection.
+The regtest-only `BTCPAY_SSRFEXCEPTIONS=127.0.0.1:14142` exists only in `dev/run-btcpay.sh`, which is not part of the package. `ReleaseHygieneTests` fails if `SSRF`, `127.0.0.1` or `localhost:` ever appears in plugin sources, or if `HttpClient` / `WebRequest` is used anywhere except the guarded callback transport.
 The fresh-install test runs BTCPay without any SSRF exception.
 
 **Payout double-spend and races.**
@@ -100,6 +102,15 @@ The fresh-install test runs BTCPay without any SSRF exception.
 
 **Secrets in logs.** Log lines carry ids, counts and states only. No tokens, links, emails, addresses or API keys (grep-reviewed). The magic-link URL is never logged.
 The dev tooling keeps credentials in gitignored files and never prints them.
+
+## Order callback (v1 addition, reviewed 2026-10-19)
+- **SSRF.** Release builds accept only `https` URLs whose host is a public DNS name or public IP. Refused: `localhost`/`*.localhost`, `.local`, `.internal`, `.onion`, single-label names, and IPs in 0/8, 10/8, 100.64/10, 127/8, 169.254/16 (cloud metadata), 172.16/12, 192.168/16, 192.0.0/24, 198.18/15, documentation ranges, 224/4 and above, `::`, `::1`, fc00::/7, fe80::/10, multicast, IPv4-mapped and NAT64 forms of those. The check runs on save and again inside the connection callback on **every address the name resolves to**, and only those vetted addresses are dialled, so DNS rebinding cannot reach an internal host. No proxy, no cookies, no redirects followed, 10 s connect / 15 s total timeout. The Debug-only exception (http + private hosts for a local receiver) is the plugin's only `#if DEBUG`, pinned by `ReleaseHygieneTests`; the Release package refused `http://127.0.0.1`, `https://127.0.0.1`, `https://localhost`, `https://169.254.169.254`, `https://10.0.0.5` and `https://[::1]` on a fresh Release install.
+- **Authenticity and replay.** HMAC-SHA256 over `"<t>.<body>"`; the documented receiver check uses a ±5 min window and constant-time compare. The idempotency `eventId` lets receivers drop replays inside the window.
+- **Secret.** 256-bit random; encrypted at rest with Data Protection; shown once in a `no-store` response (not TempData, not a URL); never logged (tested with a capturing logger). Regenerating invalidates the old secret immediately.
+- **Double delivery / races.** One automatic delivery per event (filtered unique index); deliveries are claimed with a conditional update plus a 2-minute lease (6 concurrent workers → 1 request, tested).
+- **Authz/CSRF.** New controller under `/stores/{storeId}/…` with `CanViewAffiliates`, all four POSTs need `CanManageAffiliates` and antiforgery; redelivery is store-scoped (another store's delivery id → 404). Pinned by `EndpointPostureTests`.
+- **Logging.** Delivery id, event id, host, attempt and HTTP status only; the URL path/query (which may hold the seller's own token) is not logged.
+- **Residual.** A seller who points the callback at a slow endpoint only delays their own deliveries (sequential, 15 s timeout). Admins with "Manage your affiliates" can choose any public URL, which is intended.
 
 ## Residual recommendations
 1. Run BTCPay behind HTTPS (cookies are then `Secure`).

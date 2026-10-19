@@ -21,6 +21,8 @@ The plugin is built and tested against **BTCPay Server 2.4.5** (`Dependencies: B
 | `EmailSenderFactory` (`BTCPayServer.Plugins.Emails`) | magic links and notices | M7 acceptance with Mailpit |
 | `LocalizerService` and tables `lang_dictionaries` / `lang_translations` | seeding the Spanish dictionary | `dev/screens_m8.py` |
 | `ReportProvider` / `QueryContext` / `ViewDefinition` | Reporting views | Reporting → Affiliate commissions |
+| `PlanCheckouts.InvoiceId/PlanId/SubscriberId`, `Subscribers.OfferingId/CustomerId/PlanId`, `Plans.OfferingId` | order-callback payload ids | `dev/acceptance_callbacks.py` |
+| `IHttpClientFactory` (named client `MaxiAffiliates.Callback`), ASP.NET Data Protection key ring | callback sending, secret encryption | callback test send; after restoring BTCPay to a new machine without its key ring, regenerate the secret |
 | `NicolasDorier.RateLimits` zones `btcpayregister`, `btcpaylogin`, `publicinvoices` | public rate limits | `EndpointPostureTests` |
 | `CurrencyNameTable`, `DisplayFormatter`, `BTCPayNetworkProvider` | formatting, address validation | admin pages render |
 | `_LayoutSimple`, BTCPay tag helpers (`permission`, `text-translate`) | views | pages render; strings translated |

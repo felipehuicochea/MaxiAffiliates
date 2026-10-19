@@ -181,6 +181,98 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
                     b.ToTable("StoreSettings", "BTCPayServer.Plugins.MaxiAffiliates");
                 });
 
+            modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.CallbackDelivery", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EventId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Facts")
+                        .HasColumnType("text");
+
+                    b.Property<string>("InvoiceId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<int?>("LastHttpStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Payload")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RedeliveryOfId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("StoreId")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "NextAttemptAt");
+
+                    b.HasIndex("StoreId", "CreatedAt");
+
+                    b.HasIndex("StoreId", "EventId")
+                        .IsUnique()
+                        .HasFilter("\"RedeliveryOfId\" IS NULL");
+
+                    b.ToTable("CallbackDeliveries", "BTCPayServer.Plugins.MaxiAffiliates");
+                });
+
+            modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.CallbackSettings", b =>
+                {
+                    b.Property<string>("StoreId")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("SecretCreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SecretProtected")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.HasKey("StoreId");
+
+                    b.ToTable("CallbackSettings", "BTCPayServer.Plugins.MaxiAffiliates");
+                });
+
             modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.Commission", b =>
                 {
                     b.Property<string>("Id")

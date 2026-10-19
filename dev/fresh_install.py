@@ -48,5 +48,17 @@ with sync_playwright() as p:
         check("public signup page renders", a.locator("#maxiaff-signup").count() == 1)
         a.goto(f"{BASE}/plugins/maxiaffiliates/{store}/panel/login"); check("panel login renders", a.locator("#maxiaff-panel-login").count() == 1)
         pg.goto(f"{BASE}/server/translations"); check("'Spanish' dictionary seeded", "Spanish" in pg.inner_text("body"))
+        # v1 order callback in a Release build: https only, private/loopback hosts refused (no dev exception compiled in)
+        cb = f"{BASE}/stores/{store}/plugins/maxiaffiliates/callbacks"
+        pg.goto(cb); pg.click("#maxiaff-callback-secret"); pg.wait_for_load_state("networkidle")
+        check("callback page renders; secret generated", pg.locator("#maxiaff-callback-new-secret").count() == 1)
+        def save(url):
+            pg.goto(cb); pg.fill("#maxiaff-callback-url", url); pg.set_checked("#maxiaff-callback-enabled", True)
+            pg.click("#maxiaff-callback-save"); pg.wait_for_load_state("networkidle"); return pg.inner_text("body")
+        check("Release: http callback URL refused", "The callback URL must use https." in save("http://127.0.0.1:14171/cb"))
+        for u in ("https://127.0.0.1/cb", "https://localhost/cb", "https://169.254.169.254/latest", "https://10.0.0.5/cb", "https://[::1]/cb"):
+            check(f"Release: {u} refused (private/loopback)", "The callback URL must point to a public host." in save(u))
+        check("Release: public https URL accepted", "Callback settings saved." in save("https://shop.example.com/btcpay/callback"))
+        pg.screenshot(path=str(ROOT / "docs/screens/v1-callback/03-release-https-only.png"))
     b.close()
 print(f"{sum(results)}/{len(results)} checks passed"); sys.exit(0 if all(results) else 1)

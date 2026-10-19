@@ -9,3 +9,5 @@ public enum CommissionStatus { Pending, Payable, Paid, Reversed }
 public enum PayoutBatchState { Draft, Approved, Sent, Completed, Failed, Cancelled }
 public enum PayoutFrequency { Weekly, Monthly }
 public enum ReferralSource { Link, QueryParam, Api, Manual }
+public enum CallbackDeliveryStatus { Pending, Succeeded, Failed }
+public enum CallbackEventKind { InvoiceSettled, Test }

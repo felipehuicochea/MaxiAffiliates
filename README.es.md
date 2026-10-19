@@ -2,7 +2,7 @@
 
 Plugin de programa de afiliados para BTCPay Server (2.4.5 o superior): enlaces de referido, comisiones sobre facturas pagadas y renovaciones de suscripciones, y pagos a afiliados mediante los pagos (pull payments) de BTCPay.
 
-**Estado: en desarrollo (hitos M1–M9 terminados: afiliados, atribución, comisiones, pagos, panel de afiliados, inglés y español, revisión de seguridad). Versión candidata 1.0.0, aún no publicada.**
+**Estado: en desarrollo (hitos M1–M9 terminados: afiliados, atribución, comisiones, pagos, panel de afiliados, inglés y español, revisión de seguridad, callback de confirmación de pedidos). Versión candidata 1.0.0, aún no publicada.**
 
 English: [README.md](README.md).
 

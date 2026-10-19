@@ -2,7 +2,7 @@
 
 Affiliate program plugin for BTCPay Server (2.4.5+): referral links, commissions on paid invoices and subscription renewals, and payouts through BTCPay pull payments.
 
-**Status: in development (milestones M1–M9 done: affiliates, attribution, commissions, payouts, affiliate panel, English + Spanish, security review). Release candidate 1.0.0, not published yet.**
+**Status: in development (milestones M1–M9 done: affiliates, attribution, commissions, payouts, affiliate panel, English + Spanish, security review, order confirmation callback). Release candidate 1.0.0, not published yet.**
 
 En español: [README.es.md](README.es.md).
 

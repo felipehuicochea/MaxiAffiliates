@@ -165,3 +165,34 @@ so admin edits made in BTCPay's translation editor win. It re-runs every 15 minu
 Spanish language pack rewrites the dictionary and would drop plugin sentences. Emails (magic link, address-change notice)
 use the same localizer, so they follow the server language. CSV export headers stay English (machine-readable).
 Tests: es.json has exactly the keys of en.json, no empty or untranslated values (except brand/unit words), placeholders preserved.
+
+## v1 addition: seller-site order confirmation callback
+
+**Requirement.** On every settled invoice or subscription payment, whether or not an affiliate is credited, POST a signed event to a per-store URL so the seller's site can confirm the order.
+
+**BTCPay 2.4.5 built-in store webhooks, checked first** (`BTCPayServer/Plugins/Webhooks/WebhookSender.cs`):
+- *Signing:* header `BTCPay-Sig: sha256=<hex HMAC-SHA256(secret, body)>`. There is **no timestamp in the signature**, so a captured request can be replayed at any time (receivers can only dedupe on `deliveryId`).
+- *Retries:* "automatic redelivery" on 5xx/429/408/network errors, at 10 s, 1 min, then 10 min ×6. Deliveries are stored and the UI (Store → Webhooks → edit) shows the log with a **Redeliver** button and a **Test** button.
+- *Outbound guard:* none of its own. The webhook client follows BTCPay's general HTTP client, and admins can point a webhook at `http://` or internal hosts.
+- *Payload:* the generic invoice events (`InvoiceSettled` etc.) carry `invoiceId`, `storeId`, metadata and timestamps, but **not** the plan/offering/subscriber resolution or the affiliate/commission outcome, which only the plugin knows. Plugins cannot add fields to BTCPay's webhook payloads in 2.4.5 (the trigger providers are internal), and the webhook secret is not exposed to plugins, so the plugin cannot sign "on behalf of" a BTCPay webhook either.
+
+**Choice: the plugin sends its own callback, following BTCPay's conventions where they are sound.**
+- Same building blocks as BTCPay: HMAC-SHA256, hex encoding, JSON body, a stored delivery log with redelivery and a test button, and retry only on network errors/408/425/429/5xx (other 4xx are final, as in BTCPay).
+- Stronger where the requirement asks for it: **timestamped signature** `MaxiAff-Signature: t=<unix>,v1=<hex HMAC-SHA256(secret, "<t>.<body>")>` (the Stripe-style scheme, widely supported by receiver libraries) so receivers can reject anything older than 5 minutes; an **idempotency `eventId`** (`evt_settled_<invoiceId>`, also in header `MaxiAff-Event-Id`) that is identical on retries and redeliveries; **https only and no private/loopback hosts** in Release builds, checked when the URL is saved and again on the actual dialled addresses (DNS-rebinding safe), with redirects not followed.
+- The plain BTCPay webhook is still the right tool for sellers who only need "invoice settled" with no affiliate fields: the admin guide recommends it in that case. Sellers who want plan/subscriber/affiliate data in one signed message use the plugin callback. The two can run side by side; the callback's `invoiceId` matches BTCPay's.
+
+**How it works.**
+- `InvoiceSettledListener` (already handling settled invoices for commissions) calls `CallbackService.EnqueueSettled` after crediting, with the credit outcome. One automatic delivery per event, enforced by a filtered unique index on `(StoreId, EventId) WHERE RedeliveryOfId IS NULL`; duplicate BTCPay settle events (`paymentSettled`, `confirmed`, `completed`…) collapse there.
+- The first attempt waits 3 s so BTCPay's subscription service has created the subscriber for a first plan payment; the payload is resolved then (plan, offering, subscriber and customer ids from `PlanCheckouts`/`Subscribers`) and **frozen** in the delivery row, so retries and redeliveries send byte-identical bodies with a fresh timestamp and signature.
+- `CallbackDispatcher` (hosted service) sends due deliveries immediately when queued and polls every 5 s. Each delivery is claimed with a conditional `UPDATE … WHERE NextAttemptAt <= now` that also sets a 2-minute lease, so concurrent workers (or a crash mid-send) never double-send and nothing is lost.
+- Backoff after n failed attempts: 10 s × 3^(n-1), capped at 1 h; at most 8 attempts (≈ 2 h 10 min in total), then *Failed*. Manual **Redeliver** creates a new delivery with the same event id and body.
+- Secret: 256-bit random, `whsec_` + base64url, stored encrypted with ASP.NET Data Protection (BTCPay's key ring), rendered once in the response to "Generate"/"Regenerate" (`Cache-Control: no-store`, not via TempData or a URL). Logs carry delivery id, event id, host and HTTP status only, never the secret or the URL path/query.
+- Debug builds (local development only) allow `http://` and private hosts so a receiver on the dev machine works; this is the only `#if DEBUG` in the plugin, and the Release package refuses such URLs (verified on the fresh Release install).
+
+Payload (`Content-Type: application/json`):
+```json
+{"eventId":"evt_settled_<invoiceId>","type":"invoice.settled","storeId":"…","invoiceId":"…","planId":"…|null","offeringId":"…|null",
+ "subscriberId":"…|null","customerId":"…|null","amount":"10","currency":"USD","status":"settled","affiliateCode":"AB12CD34|null",
+ "commissionCredited":true,"commissionOutcome":"credited|no_referral|affiliate_inactive|self_referral|out_of_scope|zero_amount|pending_rate",
+ "timestamp":1792440000,"test":false}
+```

@@ -93,3 +93,13 @@ public class PanelViewModel
     public BTCPayServer.Plugins.MaxiAffiliates.Data.PayoutMethodKind PayoutMethod { get; set; }
     public string PayoutDestination { get; set; } = "";
 }
+
+public class CallbacksViewModel
+{
+    public string StoreId { get; set; } = null!;
+    public BTCPayServer.Plugins.MaxiAffiliates.Services.CallbackSettingsView Settings { get; set; } = null!;
+    public BTCPayServer.Plugins.MaxiAffiliates.Data.CallbackDelivery[] Deliveries { get; set; } = [];
+    /// <summary>Only set on the response to "Generate secret": displayed once, never stored in plain text.</summary>
+    public string? NewSecret { get; set; }
+    public bool HttpsOnly { get; set; }
+}

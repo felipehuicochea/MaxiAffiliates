@@ -35,7 +35,7 @@ public class ModelTests
     {
         using var db = Ctx();
         var types = db.Model.GetEntityTypes().ToList();
-        Assert.Equal(10, types.Count);
+        Assert.Equal(12, types.Count);
         Assert.All(types, t => Assert.Equal(MaxiAffiliatesDbContext.Schema, t.GetSchema()));
     }
 
@@ -128,7 +128,7 @@ public class MigrationIntegrationTests
             Assert.Equal(CommissionStatus.Pending, status);
             var tables = await db.Database.SqlQueryRaw<string>(
                 "SELECT table_name AS \"Value\" FROM information_schema.tables WHERE table_schema = 'BTCPayServer.Plugins.MaxiAffiliates' ORDER BY 1").ToListAsync();
-            Assert.Equal(new[] { "AccessTokens", "Affiliates", "CommissionAdjustments", "CommissionRules", "Commissions", "PayoutBatches", "PayoutCycles", "PendingCredits", "Referrals", "StoreSettings" }, tables);
+            Assert.Equal(new[] { "AccessTokens", "Affiliates", "CallbackDeliveries", "CallbackSettings", "CommissionAdjustments", "CommissionRules", "Commissions", "PayoutBatches", "PayoutCycles", "PendingCredits", "Referrals", "StoreSettings" }, tables);
         }
         finally
         {

@@ -13,7 +13,7 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Services;
 /// Credits commissions when invoices settle, and reverses/claws back on invalidation, invoice refunds and subscription credit refunds.
 /// </summary>
 public class InvoiceSettledListener(
-    EventAggregator events, ILogger<InvoiceSettledListener> logger, CommissionEngine engine, CommissionLedger ledger, InvoiceCommissionMapper mapper, PayoutCycleService cycles)
+    EventAggregator events, ILogger<InvoiceSettledListener> logger, CommissionEngine engine, CommissionLedger ledger, InvoiceCommissionMapper mapper, PayoutCycleService cycles, CallbackService callbacks)
     : EventHostedServiceBase(events, logger)
 {
     protected override void SubscribeToEvents()
@@ -48,6 +48,7 @@ public class InvoiceSettledListener(
                         var result = await engine.CreditSettledInvoice(settled, cur => mapper.Rate(inv, cur, ct), ct);
                         if (result.Outcome != CreditOutcome.NoReferral)
                             logger.LogInformation("MaxiAffiliates: invoice {Invoice} -> {Outcome}", inv.Id, result.Outcome);
+                        await callbacks.EnqueueSettled(inv.StoreId, await CallbackFactsFor(settled, result, ct), ct);
                     }
                     break;
                 case BTCPayServer.HostedServices.PayoutEvent { Payout: { } po }:
@@ -70,6 +71,23 @@ public class InvoiceSettledListener(
             logger.LogError(e, "MaxiAffiliates: failed to process {Event}", evt.GetType().Name);
         }
     }
+
+    async Task<CallbackFacts> CallbackFactsFor(SettledInvoice inv, CreditResult r, CancellationToken ct) => new(
+        inv.InvoiceId, inv.Price, inv.Currency, inv.PlanId, inv.SubscriberId,
+        await callbacks.AffiliateCodeFor(inv.StoreId, inv.InvoiceId, CommissionEngine.CustomerKeyFor(inv), ct),
+        r.Outcome is CreditOutcome.Credited or CreditOutcome.AlreadyCredited, OutcomeName(r.Outcome), DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
+    public static string OutcomeName(CreditOutcome o) => o switch
+    {
+        CreditOutcome.Credited or CreditOutcome.AlreadyCredited => "credited",
+        CreditOutcome.NoReferral => "no_referral",
+        CreditOutcome.AffiliateInactive => "affiliate_inactive",
+        CreditOutcome.SelfReferral => "self_referral",
+        CreditOutcome.OutOfScope => "out_of_scope",
+        CreditOutcome.ZeroAmount => "zero_amount",
+        CreditOutcome.RateUnavailable => "pending_rate",
+        _ => o.ToString().ToLowerInvariant()
+    };
 
     void Log(string invoiceId, ReversalResult r)
     {

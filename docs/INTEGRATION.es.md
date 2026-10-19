@@ -41,3 +41,13 @@ Si tu backend crea los checkouts por su cuenta (Greenfield `POST /api/v1/plan-ch
 "newSubscriberMetadata": { "maxiaffRef": "CODIGO" }
 ```
 (Para facturas simples usa `metadata.maxiaffRef`.) El endpoint del plugin también agrega `maxiaffAffiliateId`. La atribución ocurre cuando la factura se liquida, y en ese momento se vuelve a verificar el estado del afiliado y el autorreferido contra el correo del comprador.
+
+## 5. Callback de confirmación de pedidos (sitio del vendedor)
+
+En el admin del plugin, pestaña **Callback de pedidos**: genera un secreto de firma (cópialo, se muestra una sola vez), ingresa la URL de tu callback (https, host público), actívalo y guarda. **Enviar evento de prueba** envía un evento `"type":"test"`. Desde entonces cada factura o pago de suscripción liquidado de la tienda genera un evento, haya o no afiliado. Campos: ver `docs/DESIGN.md` (v1 addition).
+
+Encabezados: `MaxiAff-Signature: t=<segundos unix>,v1=<hex>`, `MaxiAff-Event-Id`, `MaxiAff-Delivery-Id`.
+
+**Verifica cada solicitud:** toma `t` y `v1`; rechaza si `|ahora - t| > 300` s (protección contra repeticiones); calcula `HMAC-SHA256(secreto, "<t>." + cuerpo crudo)` en hex minúsculas y compáralo con `v1` en tiempo constante; deduplica por `eventId` (los reintentos y reenvíos lo repiten); responde `2xx` rápido. Errores de red, timeouts (15 s), `408`, `425`, `429` y `5xx` se reintentan (10 s, 30 s, 90 s, 4,5 min, 13,5 min, 40 min, 1 h; 8 intentos en total); otros `4xx` son definitivos. No se siguen redirecciones. Ejemplos en PHP y Python en `INTEGRATION.md`.
+
+Si solo necesitas "factura liquidada" sin datos de afiliado, también sirven los webhooks propios de BTCPay (Tienda → Webhooks).
