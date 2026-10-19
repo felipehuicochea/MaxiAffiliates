@@ -1,0 +1,6 @@
+@{ var storeId = ViewContext.RouteData.Values["storeId"]?.ToString(); var current = ViewContext.RouteData.Values["action"]?.ToString(); }
+<ul class="nav nav-pills mb-4" id="maxiaff-tabs">
+  <li class="nav-item"><a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "UIAffiliatesAdmin" ? "active" : "")" asp-area="@Plugin.Area" asp-controller="UIAffiliatesAdmin" asp-action="Index" asp-route-storeId="@storeId" text-translate="true">Affiliates</a></li>
+  <li class="nav-item"><a class="nav-link @(current == "Commissions" ? "active" : "")" asp-area="@Plugin.Area" asp-controller="UIAffiliateSettings" asp-action="Commissions" asp-route-storeId="@storeId" id="maxiaff-tab-commissions" text-translate="true">Commissions</a></li>
+  <li class="nav-item"><a class="nav-link @(current == "Settings" ? "active" : "")" asp-area="@Plugin.Area" asp-controller="UIAffiliateSettings" asp-action="Settings" asp-route-storeId="@storeId" id="maxiaff-tab-settings" text-translate="true">Settings</a></li>
+</ul>

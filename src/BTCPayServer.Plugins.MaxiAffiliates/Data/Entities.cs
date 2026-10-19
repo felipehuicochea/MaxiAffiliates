@@ -114,6 +114,8 @@ public class AffiliateStoreSettings
     public bool Enabled { get; set; } = true;
     public decimal DefaultPercent { get; set; } = 20m;
     public CommissionScope DefaultScope { get; set; } = CommissionScope.Lifetime;
+    /// <summary>Only for DefaultScope = FirstN.</summary>
+    public int? DefaultFirstN { get; set; }
     public int HoldDays { get; set; } = 30;
     public bool LightningEnabled { get; set; } = true;
     public bool OnChainEnabled { get; set; } = true;

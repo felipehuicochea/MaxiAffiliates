@@ -1,0 +1,47 @@
+@model CommissionsViewModel
+@{
+    ViewData.SetLayoutModel(new LayoutModel(Plugin.Area, StringLocalizer["Commissions"]));
+}
+<div class="sticky-header"><h2>@ViewData["Title"]</h2></div>
+<partial name="_StatusMessage" />
+<partial name="UIAffiliateSettings/_Tabs" />
+<form method="get" class="d-flex gap-2 mb-3">
+  <select name="status" class="form-select w-auto">
+    <option value="" text-translate="true">All statuses</option>
+    @foreach (var v in System.Enum.GetValues<CommissionStatus>()) { <option value="@v" selected="@(Model.Status == v)">@StringLocalizer[v.ToString()]</option> }
+  </select>
+  <button class="btn btn-secondary" type="submit" text-translate="true">Filter</button>
+</form>
+@if (Model.Rows.Length == 0)
+{
+  <p class="text-secondary" text-translate="true">No commissions yet.</p>
+}
+else
+{
+<div class="table-responsive">
+<table class="table table-hover" id="maxiaff-commissions">
+  <thead><tr>
+    <th text-translate="true">Date</th><th text-translate="true">Affiliate</th><th text-translate="true">Customer</th><th text-translate="true">Invoice</th>
+    <th class="text-end" text-translate="true">Sale</th><th class="text-end" text-translate="true">Commission</th><th class="text-end">sats</th>
+    <th text-translate="true">Status</th><th text-translate="true">Payable from</th>
+  </tr></thead>
+  <tbody>
+  @foreach (var row in Model.Rows)
+  {
+    var c = row.Commission;
+    <tr>
+      <td>@c.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+      <td>@row.AffiliateEmail <span class="text-secondary">(@row.AffiliateCode)</span></td>
+      <td>@(row.CustomerKey.StartsWith("email:") ? row.CustomerKey[6..] : "—")</td>
+      <td><a asp-area="" asp-controller="UIInvoice" asp-action="Invoice" asp-route-invoiceId="@c.InvoiceId">@c.InvoiceId</a></td>
+      <td class="text-end">@c.BaseAmount.ToString("0.########") @c.BaseCurrency</td>
+      <td class="text-end">@c.CommissionAmount.ToString("0.########") @c.BaseCurrency</td>
+      <td class="text-end">@c.AmountSats.ToString("N0")</td>
+      <td>@StringLocalizer[c.Status.ToString()]</td>
+      <td>@c.PayableAt.ToString("yyyy-MM-dd")</td>
+    </tr>
+  }
+  </tbody>
+</table>
+</div>
+}

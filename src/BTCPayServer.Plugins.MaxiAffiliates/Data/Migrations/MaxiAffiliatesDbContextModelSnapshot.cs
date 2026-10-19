@@ -86,6 +86,9 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
+                    b.Property<int?>("DefaultFirstN")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("DefaultPercent")
                         .HasPrecision(9, 4)
                         .HasColumnType("numeric(9,4)");

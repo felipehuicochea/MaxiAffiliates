@@ -47,3 +47,24 @@
 - **Website helper:** `/plugins/maxiaffiliates/js/maxiaff.js`, an embedded resource. It mirrors first-click and 30 days in localStorage plus a site cookie.
 - **CORS:** BTCPay's global CORS middleware (AllowAnyOrigin, no credentials) answers preflights before plugin actions run, so per-store origin restriction isn't possible. The helper posts `text/plain` without credentials, with the ref in the body. The endpoint only creates checkout sessions, the same exposure as public plan-checkout links.
 - See docs/INTEGRATION.md for the public contract.
+
+## M4: commissions, rules, base currency
+
+- **Trigger.** `InvoiceSettledListener` (an `EventHostedServiceBase`) subscribes to `InvoiceEvent` and acts when `Invoice.Status == Settled` (it fires on paymentSettled, confirmed, completed and markedComplete). Crediting is idempotent: there's one commission per (store, invoice), enforced by a unique index, and replayed events return `AlreadyCredited`.
+- **Mapping.** InvoiceEntity becomes `SettledInvoice`:
+  - ref = metadata `maxiaffRef`
+  - customer = `buyerEmail`
+  - plan = metadata `planId`, else the `SUBS#{checkoutId}` tag's plan checkout `PlanId`, else `itemCode`
+  - subscriber = the checkout's `SubscriberId`
+  - store default currency = `StoreBlob.DefaultCurrency`
+  - These are BTCPay core internals; re-verify them on upgrades.
+- **Renewals.** Subscriptions renewal invoices don't carry the ref, but they do carry the subscriber's email as `buyerEmail`. The `Referral` binding (customer key `email:<lower>`) created on the first credited payment therefore carries renewals. It is first click: an existing binding always beats a new ref. Suspended or banned affiliates keep their bindings but earn nothing while inactive. Self-referrals are rejected.
+- **Rule resolution.** Enabled plan rule → enabled store-wide rule (PlanId null) → program settings (`DefaultPercent`, `DefaultScope`, `DefaultFirstN`). There's one rule per plan (upsert).
+- **Scope.** `FirstPayment` covers payment #1 only. `FirstN` covers payments #1..N. `Lifetime` covers every payment. "Credited so far" is `Referral.CreditedPayments`, so out-of-scope payments don't count.
+- **Amounts.** Percent is clamped to 0–100. Flat is in the base currency and capped at the sale amount. Sats are computed at the settlement rate and rounded toward zero. `Status = Pending`, `PayableAt = settledAt + HoldDays`.
+- **Base currency.** It's `BaseCurrencyOverride`, or the store default currency when blank. Conversion uses the rates stored on the invoice (`TryGetRate(BTC_x)`), with a fallback to `RateFetcher` using the store's rate rules. BTC = 1 and SATS = 1e8 per BTC.
+  - If no rate is available, the payment is **not credited** (logged warning, `RateUnavailable`). The store's rate source must therefore provide the override currency. For example, the default Kraken script has no MXN.
+- **Admin.** There are three tabs: Affiliates, Commissions and Settings.
+  - `/stores/{id}/plugins/maxiaffiliates/settings` holds the program settings and the per-plan rules (plan picker built from the store's Subscriptions plans).
+  - `/stores/{id}/plugins/maxiaffiliates/commissions` is the ledger.
+  - Manage actions need `btcpay.store.canmanageaffiliates`.

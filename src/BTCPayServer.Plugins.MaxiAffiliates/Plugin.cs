@@ -33,6 +33,9 @@ public class Plugin : BaseBTCPayServerPlugin
         services.AddSingleton<AffiliateService>();
         services.AddSingleton<ReferralService>();
         services.AddSingleton<PlanCheckoutService>();
+        services.AddSingleton<CommissionEngine>();
+        services.AddSingleton<ProgramSettingsService>();
+        services.AddHostedService<InvoiceSettledListener>();
         services.AddTranslationProvider<MaxiAffiliatesTranslationProvider>();
         services.AddUIExtension("store-integrations-nav", $"{ViewsDirectory}/StoreNavExtension.cshtml");
         services.AddPolicyDefinitions(

@@ -1,0 +1,115 @@
+@model ProgramSettingsViewModel
+@{
+    ViewData.SetLayoutModel(new LayoutModel(Plugin.Area, StringLocalizer["Affiliate program settings"]));
+    IEnumerable<SelectListItem> Enum<T>(T? selected) where T : struct, System.Enum =>
+        System.Enum.GetValues<T>().Select(v => new SelectListItem(StringLocalizer[v.ToString()], v.ToString(), selected?.Equals(v) == true));
+    string PlanName(string? id) => id is null ? StringLocalizer["All plans (store default rule)"] : Model.Plans.FirstOrDefault(p => p.Id == id)?.Name ?? id;
+    var s = Model.Settings;
+}
+<div class="sticky-header"><h2>@ViewData["Title"]</h2></div>
+<partial name="_StatusMessage" />
+<partial name="UIAffiliateSettings/_Tabs" />
+<form method="post" asp-action="SaveSettings" asp-route-storeId="@Model.StoreId" id="maxiaff-settings" permission="@MaxiAffiliatesPolicies.CanManageAffiliates">
+<div class="row g-4">
+ <div class="col-lg-6">
+  <h4 text-translate="true">Commissions</h4>
+  <div class="form-check form-switch mb-3">
+    <input asp-for="Settings.Enabled" class="form-check-input" /><label asp-for="Settings.Enabled" class="form-check-label" text-translate="true">Affiliate program enabled</label>
+  </div>
+  <div class="mb-3">
+    <label asp-for="Settings.DefaultPercent" class="form-label" text-translate="true">Default commission (%)</label>
+    <input asp-for="Settings.DefaultPercent" type="number" step="0.01" min="0" max="100" class="form-control" />
+  </div>
+  <div class="row mb-3">
+    <div class="col">
+      <label asp-for="Settings.DefaultScope" class="form-label" text-translate="true">Pay commission on</label>
+      <select asp-for="Settings.DefaultScope" asp-items="Enum<CommissionScope>(s.DefaultScope)" class="form-select"></select>
+    </div>
+    <div class="col">
+      <label asp-for="Settings.DefaultFirstN" class="form-label" text-translate="true">N (for First N payments)</label>
+      <input asp-for="Settings.DefaultFirstN" type="number" min="1" class="form-control" />
+    </div>
+  </div>
+  <div class="mb-3">
+    <label asp-for="Settings.HoldDays" class="form-label" text-translate="true">Hold period (days)</label>
+    <input asp-for="Settings.HoldDays" type="number" min="0" max="365" class="form-control" />
+    <div class="form-text" text-translate="true">Commissions become payable after this period, which leaves time for refunds.</div>
+  </div>
+  <div class="mb-3">
+    <label asp-for="Settings.BaseCurrencyOverride" class="form-label" text-translate="true">Commission base currency</label>
+    <input asp-for="Settings.BaseCurrencyOverride" class="form-control" placeholder="@Model.StoreDefaultCurrency" maxlength="5" />
+    <div class="form-text" id="maxiaff-effective-currency">@StringLocalizer["Leave blank to use the store default currency ({0}). Currently used: {1}.", Model.StoreDefaultCurrency, Model.EffectiveBaseCurrency]</div>
+  </div>
+ </div>
+ <div class="col-lg-6">
+  <h4 text-translate="true">Affiliates and payouts</h4>
+  <div class="form-check form-switch mb-2"><input asp-for="Settings.AutoApproveAffiliates" class="form-check-input" /><label asp-for="Settings.AutoApproveAffiliates" class="form-check-label" text-translate="true">Approve new affiliates automatically</label></div>
+  <div class="form-check form-switch mb-2"><input asp-for="Settings.LightningEnabled" class="form-check-input" /><label asp-for="Settings.LightningEnabled" class="form-check-label" text-translate="true">Lightning payouts</label></div>
+  <div class="form-check form-switch mb-2"><input asp-for="Settings.OnChainEnabled" class="form-check-input" /><label asp-for="Settings.OnChainEnabled" class="form-check-label" text-translate="true">On-chain payouts</label></div>
+  <div class="form-check form-switch mb-3"><input asp-for="Settings.AutoApprovePayouts" class="form-check-input" /><label asp-for="Settings.AutoApprovePayouts" class="form-check-label" text-translate="true">Approve payouts automatically</label></div>
+  <div class="mb-3">
+    <label asp-for="Settings.MinPayoutSats" class="form-label" text-translate="true">Minimum payout (sats)</label>
+    <input asp-for="Settings.MinPayoutSats" type="number" min="0" class="form-control" />
+    <div class="form-text" text-translate="true">Smaller balances carry over to the next cycle.</div>
+  </div>
+  <div class="row mb-3">
+    <div class="col"><label asp-for="Settings.PayoutFrequency" class="form-label" text-translate="true">Payout cycle</label>
+      <select asp-for="Settings.PayoutFrequency" asp-items="Enum<PayoutFrequency>(s.PayoutFrequency)" class="form-select"></select></div>
+    <div class="col"><label asp-for="Settings.PayoutDay" class="form-label" text-translate="true">Payout day</label>
+      <input asp-for="Settings.PayoutDay" type="number" min="0" max="28" class="form-control" />
+      <div class="form-text" text-translate="true">Weekly: 0 = Sunday … 6. Monthly: 1–28.</div></div>
+  </div>
+  <div class="mb-3">
+    <label asp-for="Settings.LandingUrl" class="form-label" text-translate="true">Landing page URL</label>
+    <input asp-for="Settings.LandingUrl" class="form-control" placeholder="https://www.example.com/" />
+  </div>
+ </div>
+</div>
+<button type="submit" class="btn btn-primary" id="maxiaff-save-settings" text-translate="true">Save</button>
+</form>
+
+<h4 class="mt-5" text-translate="true">Commission rules per plan</h4>
+<p class="text-secondary" text-translate="true">A plan rule overrides the store default rule, which overrides the default commission above.</p>
+@if (Model.Rules.Length == 0)
+{
+  <p class="text-secondary" id="maxiaff-no-rules" text-translate="true">No rules yet. The default commission applies to every plan.</p>
+}
+else
+{
+<table class="table" id="maxiaff-rules">
+  <thead><tr><th text-translate="true">Plan</th><th text-translate="true">Commission</th><th text-translate="true">Pay commission on</th><th text-translate="true">Status</th><th></th></tr></thead>
+  <tbody>
+  @foreach (var r in Model.Rules)
+  {
+    <tr>
+      <td>@PlanName(r.PlanId)</td>
+      <td>@(r.Type == CommissionType.Percent ? $"{r.Value:0.##} %" : $"{r.Value:0.########} {Model.EffectiveBaseCurrency}")</td>
+      <td>@StringLocalizer[r.Scope.ToString()]@(r.Scope == CommissionScope.FirstN ? $" (N = {r.FirstN})" : "")</td>
+      <td>@(r.Enabled ? StringLocalizer["Enabled"] : StringLocalizer["Disabled"])</td>
+      <td class="text-end">
+        <form method="post" asp-action="DeleteRule" asp-route-storeId="@Model.StoreId" asp-route-ruleId="@r.Id" permission="@MaxiAffiliatesPolicies.CanManageAffiliates">
+          <button class="btn btn-link text-danger p-0" type="submit" text-translate="true">Delete</button>
+        </form>
+      </td>
+    </tr>
+  }
+  </tbody>
+</table>
+}
+<form method="post" asp-action="SaveRule" asp-route-storeId="@Model.StoreId" class="row g-2 align-items-end" id="maxiaff-rule-form" permission="@MaxiAffiliatesPolicies.CanManageAffiliates">
+  <div class="col-md-3"><label class="form-label" for="Rule_PlanId" text-translate="true">Plan</label>
+    <select asp-for="Rule.PlanId" class="form-select">
+      <option value="" text-translate="true">All plans (store default rule)</option>
+      @foreach (var p in Model.Plans) { <option value="@p.Id">@p.Name (@p.Price.ToString("0.########") @p.Currency)</option> }
+    </select></div>
+  <div class="col-md-2"><label class="form-label" for="Rule_Type" text-translate="true">Type</label>
+    <select asp-for="Rule.Type" asp-items="Enum<CommissionType>(Model.Rule.Type)" class="form-select"></select></div>
+  <div class="col-md-2"><label class="form-label" for="Rule_Value" text-translate="true">Value</label>
+    <input asp-for="Rule.Value" type="number" step="any" min="0" class="form-control" /></div>
+  <div class="col-md-2"><label class="form-label" for="Rule_Scope" text-translate="true">Pay commission on</label>
+    <select asp-for="Rule.Scope" asp-items="Enum<CommissionScope>(Model.Rule.Scope)" class="form-select"></select></div>
+  <div class="col-md-1"><label class="form-label" for="Rule_FirstN">N</label>
+    <input asp-for="Rule.FirstN" type="number" min="1" class="form-control" /></div>
+  <div class="col-md-1"><div class="form-check"><input asp-for="Rule.Enabled" class="form-check-input" /><label asp-for="Rule.Enabled" class="form-check-label" text-translate="true">Enabled</label></div></div>
+  <div class="col-md-1"><button type="submit" class="btn btn-secondary" id="maxiaff-save-rule" text-translate="true">Add / update</button></div>
+</form>

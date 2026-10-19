@@ -32,3 +32,23 @@ public class AffiliatesListViewModel
     public string ScriptUrl { get; set; } = "";
     public Affiliate[] Affiliates { get; set; } = [];
 }
+
+public record PlanOption(string Id, string Name, decimal Price, string Currency);
+
+public class ProgramSettingsViewModel
+{
+    public string StoreId { get; set; } = null!;
+    public BTCPayServer.Plugins.MaxiAffiliates.Data.AffiliateStoreSettings Settings { get; set; } = null!;
+    public string StoreDefaultCurrency { get; set; } = null!;
+    public string EffectiveBaseCurrency { get; set; } = null!;
+    public BTCPayServer.Plugins.MaxiAffiliates.Data.CommissionRule[] Rules { get; set; } = [];
+    public PlanOption[] Plans { get; set; } = [];
+    public BTCPayServer.Plugins.MaxiAffiliates.Data.CommissionRule Rule { get; set; } = new() { Value = 20 };
+}
+
+public class CommissionsViewModel
+{
+    public string StoreId { get; set; } = null!;
+    public BTCPayServer.Plugins.MaxiAffiliates.Data.CommissionStatus? Status { get; set; }
+    public BTCPayServer.Plugins.MaxiAffiliates.Services.CommissionRow[] Rows { get; set; } = [];
+}

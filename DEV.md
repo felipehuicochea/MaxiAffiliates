@@ -50,6 +50,12 @@ python3 -m venv ~/.venvs/pw && ~/.venvs/pw/bin/pip install playwright   # once; 
 ```
 Psql into the dev DB: `sudo docker exec maxiaff-regtest-postgres-1 psql -h 127.0.0.1 -p 39372 -U postgres -d btcpayserver`
 
+## M4 acceptance (settings UI, rules, initial + renewal crediting)
+```bash
+~/.venvs/pw/bin/python dev/acceptance_m4.py    # 19 checks; renewals via Greenfield plan-checkout with customerSelector=Email:<buyer>
+```
+Screenshots: `docs/screens/m4/`.
+
 ## Migrations
 The plugin project doesn't copy BTCPay assemblies, so `dotnet ef` uses the helper startup project `dev/MaxiAffiliates.DesignTime`. It needs the dev Postgres running.
 ```bash
