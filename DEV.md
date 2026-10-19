@@ -43,6 +43,13 @@ python3 -m venv ~/.venvs/pw && ~/.venvs/pw/bin/pip install playwright   # once; 
 ~/.venvs/pw/bin/python dev/screens_m2.py    # needs stack + server running; writes docs/screens/m2/*.png
 ```
 
+## M3 acceptance (referrals, helper, paid regtest checkout)
+```bash
+~/.venvs/pw/bin/python dev/make_api_key.py     # once: Greenfield key -> dev/.btcpay-data/api-key.txt (not printed)
+~/.venvs/pw/bin/python dev/acceptance_m3.py    # serves dev/landing on 127.0.0.1:8099, pays an invoice with the regtest bitcoind wallet
+```
+Psql into the dev DB: `sudo docker exec maxiaff-regtest-postgres-1 psql -h 127.0.0.1 -p 39372 -U postgres -d btcpayserver`
+
 ## Migrations
 The plugin project doesn't copy BTCPay assemblies, so `dotnet ef` uses the helper startup project `dev/MaxiAffiliates.DesignTime`. It needs the dev Postgres running.
 ```bash
@@ -52,7 +59,7 @@ dotnet ef migrations add <Name> --no-build --project src/BTCPayServer.Plugins.Ma
 ```
 Then follow BTCPay's convention: move the `[DbContext]`/`[Migration]` attributes from `.Designer.cs` into the migration, delete the `.Designer.cs`, and remove `Down()`. Migrations run automatically at server start (`AddPluginDbContext`).
 
-## TODO placeholders (unconfirmed)
-- MIT license holder (LICENSE): TODO
-- README tip address: TODO
+## Project metadata
+- MIT license holder: Felipe Huicochea (2026), confirmed.
+- README tip address: bc1q2pdqh45csx983dt0vedstn0sagm4m0zt8umpuy, confirmed.
 - Public repo (planned under felipehuicochea): not created; no remote configured.

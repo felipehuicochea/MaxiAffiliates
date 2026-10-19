@@ -27,5 +27,8 @@ public class AffiliatesListViewModel
     public AffiliateStatus? Status { get; set; }
     public string? Search { get; set; }
     public string SignupUrl { get; set; } = "";
+    public string? LandingUrl { get; set; }
+    public string ReferralLinkPrefix { get; set; } = "";
+    public string ScriptUrl { get; set; } = "";
     public Affiliate[] Affiliates { get; set; } = [];
 }

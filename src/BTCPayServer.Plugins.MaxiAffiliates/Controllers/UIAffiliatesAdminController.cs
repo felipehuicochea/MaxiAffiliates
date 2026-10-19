@@ -22,9 +22,27 @@ public class UIAffiliatesAdminController(AffiliateService affiliates, IStringLoc
         {
             StoreId = storeId, Status = status, Search = search,
             SignupUrl = Url.Action(nameof(UIAffiliateSignupController.Signup), "UIAffiliateSignup", new { storeId, area = Plugin.Area }, Request.Scheme) ?? "",
-            Affiliates = await affiliates.List(storeId, status, search, HttpContext.RequestAborted)
+            Affiliates = await affiliates.List(storeId, status, search, HttpContext.RequestAborted),
+            LandingUrl = (await affiliates.GetSettings(storeId, HttpContext.RequestAborted)).LandingUrl,
+            ReferralLinkPrefix = $"{Request.Scheme}://{Request.Host}{Request.PathBase}/aff/{storeId}/",
+            ScriptUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}/plugins/maxiaffiliates/js/maxiaff.js"
         };
         return View(vm);
+    }
+
+    [HttpPost("~/stores/{storeId}/plugins/maxiaffiliates/referral-settings")]
+    [Authorize(Policy = MaxiAffiliatesPolicies.CanManageAffiliates, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveReferralSettings(string storeId, string? landingUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(landingUrl) && !UIReferralController.TryGetLanding(landingUrl.Trim(), out _))
+        {
+            TempData.SetStatusMessageModel(new StatusMessageModel { Severity = StatusMessageModel.StatusSeverity.Error, Message = localizer["Enter a valid http(s) URL for the landing page."] });
+            return RedirectToAction(nameof(Index), new { storeId });
+        }
+        await affiliates.SaveLandingUrl(storeId, landingUrl, HttpContext.RequestAborted);
+        TempData.SetStatusMessageModel(new StatusMessageModel { Severity = StatusMessageModel.StatusSeverity.Success, Message = localizer["Referral settings saved."] });
+        return RedirectToAction(nameof(Index), new { storeId });
     }
 
     [HttpPost("~/stores/{storeId}/plugins/maxiaffiliates/affiliates/{affiliateId}/{op}")]

@@ -31,6 +31,8 @@ public class Plugin : BaseBTCPayServerPlugin
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<IAttributionStrategy, FirstClickAttributionStrategy>();
         services.AddSingleton<AffiliateService>();
+        services.AddSingleton<ReferralService>();
+        services.AddSingleton<PlanCheckoutService>();
         services.AddTranslationProvider<MaxiAffiliatesTranslationProvider>();
         services.AddUIExtension("store-integrations-nav", $"{ViewsDirectory}/StoreNavExtension.cshtml");
         services.AddPolicyDefinitions(

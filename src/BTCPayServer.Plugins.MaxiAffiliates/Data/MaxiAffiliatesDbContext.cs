@@ -81,6 +81,7 @@ public class MaxiAffiliatesDbContext(DbContextOptions<MaxiAffiliatesDbContext> o
             e.Property(x => x.PayoutFrequency).HasConversion<string>().HasMaxLength(16);
             e.Property(x => x.DefaultPercent).HasPrecision(9, 4);
             e.Property(x => x.BaseCurrencyOverride).HasMaxLength(10);
+            e.Property(x => x.LandingUrl).HasMaxLength(2048);
         });
     }
 }

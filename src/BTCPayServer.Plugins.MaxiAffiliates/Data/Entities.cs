@@ -126,5 +126,7 @@ public class AffiliateStoreSettings
     public int PayoutDay { get; set; } = 1;
     /// <summary>Null = use the store's default currency.</summary>
     public string? BaseCurrencyOverride { get; set; }
+    /// <summary>Where /aff/{storeId}/{code} redirects (with ?ref=CODE).</summary>
+    public string? LandingUrl { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }

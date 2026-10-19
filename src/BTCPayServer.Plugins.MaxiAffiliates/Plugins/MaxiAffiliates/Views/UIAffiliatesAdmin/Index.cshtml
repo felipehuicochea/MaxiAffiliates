@@ -10,6 +10,18 @@
 </div>
 <partial name="_StatusMessage" />
 <p class="text-secondary">@StringLocalizer["Public signup page:"] <a href="@Model.SignupUrl" id="maxiaff-signup-url" target="_blank" rel="noopener">@Model.SignupUrl</a></p>
+<div class="card mb-4"><div class="card-body">
+  <h5 class="card-title" text-translate="true">Referral links</h5>
+  <form method="post" asp-action="SaveReferralSettings" asp-route-storeId="@Model.StoreId" class="d-flex flex-wrap gap-2 align-items-end mb-2" permission="@MaxiAffiliatesPolicies.CanManageAffiliates" id="maxiaff-referral-settings">
+    <div class="flex-grow-1">
+      <label for="landingUrl" class="form-label" text-translate="true">Landing page URL</label>
+      <input id="landingUrl" name="landingUrl" value="@Model.LandingUrl" class="form-control" placeholder="https://www.example.com/" />
+    </div>
+    <button type="submit" class="btn btn-primary" id="maxiaff-save-landing" text-translate="true">Save</button>
+  </form>
+  <p class="text-secondary mb-1">@StringLocalizer["Referral link format:"] <code>@(Model.ReferralLinkPrefix)CODE</code></p>
+  <p class="text-secondary mb-0">@StringLocalizer["Website helper script:"] <code>&lt;script src="@Model.ScriptUrl" data-store="@Model.StoreId"&gt;&lt;/script&gt;</code></p>
+</div></div>
 <form method="get" class="d-flex flex-wrap gap-2 mb-3">
   <select name="status" class="form-select w-auto" asp-items="Html.GetEnumSelectList<AffiliateStatus>().Select(i => { i.Value = i.Text; i.Text = StringLocalizer[i.Text]; i.Selected = Model.Status?.ToString() == i.Value; return i; })">
     <option value="" text-translate="true">All statuses</option>

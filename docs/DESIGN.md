@@ -36,3 +36,14 @@
   - Every UI string goes through BTCPay's localizer (`text-translate="true"` / `StringLocalizer[...]`).
   - The keys live in embedded `Resources/Translations/en.json` and are registered via `IDefaultTranslationProvider`, so they appear in Server Settings → Translations.
   - A unit test fails if any view or controller string is missing from en.json. M8 adds es.json.
+
+## M3: referral capture
+- **Click endpoint:** `/aff/{storeId}/{code}`. First-click cookie `maxiaff_ref_{storeId}` = `CODE.unixSeconds`, HttpOnly, SameSite=Lax, Max-Age 30 days. Redirects only to the store's configured `LandingUrl` (new column, migration `AddLandingUrl`), so there's no open redirect.
+- **Attribution logic:** all decisions go through `IAttributionStrategy` (`FirstClickAttributionStrategy`) via `ReferralService` (`PickCode` / `CookieAfterClick` / `Resolve`). Resolve applies:
+  - Active-only affiliates
+  - per-store codes
+  - the self-referral check against the buyer email
+- **Checkout:** `PlanCheckoutService` creates the core `PlanCheckoutData` with `invoiceMetadata` and `newSubscriberMetadata` set to `{maxiaffRef, maxiaffAffiliateId}`. This mirrors Greenfield `POST /api/v1/plan-checkout` in 2.4.5. It **depends on core data types**, so it must be re-verified on every BTCPay upgrade.
+- **Website helper:** `/plugins/maxiaffiliates/js/maxiaff.js`, an embedded resource. It mirrors first-click and 30 days in localStorage plus a site cookie.
+- **CORS:** BTCPay's global CORS middleware (AllowAnyOrigin, no credentials) answers preflights before plugin actions run, so per-store origin restriction isn't possible. The helper posts `text/plain` without credentials, with the ref in the body. The endpoint only creates checkout sessions, the same exposure as public plan-checkout links.
+- See docs/INTEGRATION.md for the public contract.

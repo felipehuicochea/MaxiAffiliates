@@ -73,6 +73,16 @@ public class AffiliateService(IDbContextFactory<MaxiAffiliatesDbContext> dbFacto
         }
     }
 
+    public async Task SaveLandingUrl(string storeId, string? landingUrl, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var s = await db.StoreSettings.FirstOrDefaultAsync(x => x.StoreId == storeId, ct);
+        if (s is null) { s = new AffiliateStoreSettings { StoreId = storeId }; db.StoreSettings.Add(s); }
+        s.LandingUrl = string.IsNullOrWhiteSpace(landingUrl) ? null : landingUrl.Trim();
+        s.UpdatedAt = clock.GetUtcNow();
+        await db.SaveChangesAsync(ct);
+    }
+
     public static string GenerateCode(int length = 8) =>
         new(Enumerable.Range(0, length).Select(_ => CodeAlphabet[RandomNumberGenerator.GetInt32(CodeAlphabet.Length)]).ToArray());
 

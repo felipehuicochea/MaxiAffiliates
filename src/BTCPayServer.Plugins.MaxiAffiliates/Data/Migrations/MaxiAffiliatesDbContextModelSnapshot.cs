@@ -101,6 +101,10 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
                     b.Property<int>("HoldDays")
                         .HasColumnType("integer");
 
+                    b.Property<string>("LandingUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
                     b.Property<bool>("LightningEnabled")
                         .HasColumnType("boolean");
 
