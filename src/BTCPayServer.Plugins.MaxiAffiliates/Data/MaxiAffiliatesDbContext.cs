@@ -16,6 +16,8 @@ public class MaxiAffiliatesDbContext(DbContextOptions<MaxiAffiliatesDbContext> o
     public DbSet<CommissionRule> CommissionRules => Set<CommissionRule>();
     public DbSet<Referral> Referrals => Set<Referral>();
     public DbSet<Commission> Commissions => Set<Commission>();
+    public DbSet<CommissionAdjustment> CommissionAdjustments => Set<CommissionAdjustment>();
+    public DbSet<PendingCredit> PendingCredits => Set<PendingCredit>();
     public DbSet<PayoutBatch> PayoutBatches => Set<PayoutBatch>();
     public DbSet<AffiliateStoreSettings> StoreSettings => Set<AffiliateStoreSettings>();
 
@@ -58,6 +60,8 @@ public class MaxiAffiliatesDbContext(DbContextOptions<MaxiAffiliatesDbContext> o
             e.Property(x => x.CommissionAmount).HasPrecision(28, 8);
             e.Property(x => x.Rate).HasPrecision(28, 8);
             e.Property(x => x.BaseCurrency).HasMaxLength(10);
+            e.Property(x => x.SaleAmount).HasPrecision(28, 8);
+            e.Property(x => x.SaleCurrency).HasMaxLength(10);
             e.HasOne(x => x.Affiliate).WithMany(a => a.Commissions).HasForeignKey(x => x.AffiliateId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Referral).WithMany(r => r.Commissions).HasForeignKey(x => x.ReferralId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.PayoutBatch).WithMany(p => p.Commissions).HasForeignKey(x => x.PayoutBatchId).OnDelete(DeleteBehavior.SetNull);
@@ -65,6 +69,21 @@ public class MaxiAffiliatesDbContext(DbContextOptions<MaxiAffiliatesDbContext> o
             e.HasIndex(x => new { x.StoreId, x.InvoiceId }).IsUnique();
             e.HasIndex(x => new { x.StoreId, x.Status, x.PayableAt });
             e.HasIndex(x => new { x.AffiliateId, x.Status });
+        });
+        b.Entity<CommissionAdjustment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Reason).HasMaxLength(64);
+            e.Property(x => x.SourceRef).HasMaxLength(128);
+            e.HasOne(x => x.Commission).WithMany().HasForeignKey(x => x.CommissionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.StoreId, x.SourceRef }).IsUnique();
+            e.HasIndex(x => new { x.AffiliateId, x.PayoutBatchId });
+        });
+        b.Entity<PendingCredit>(e =>
+        {
+            e.HasKey(x => new { x.StoreId, x.InvoiceId });
+            e.Property(x => x.LastError).HasMaxLength(256);
+            e.HasIndex(x => new { x.GaveUp, x.NextAttemptAt });
         });
         b.Entity<PayoutBatch>(e =>
         {

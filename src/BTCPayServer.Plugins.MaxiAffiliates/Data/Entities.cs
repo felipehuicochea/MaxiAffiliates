@@ -72,6 +72,9 @@ public class Commission
     public string InvoiceId { get; set; } = null!;
     public string? RuleId { get; set; }
     public string? PlanId { get; set; }
+    /// <summary>Invoice price and currency as sold (used to size partial refunds).</summary>
+    public decimal SaleAmount { get; set; }
+    public string? SaleCurrency { get; set; }
     public decimal BaseAmount { get; set; }
     public string BaseCurrency { get; set; } = null!;
     public decimal CommissionAmount { get; set; }
@@ -131,4 +134,36 @@ public class AffiliateStoreSettings
     /// <summary>Where /aff/{storeId}/{code} redirects (with ?ref=CODE).</summary>
     public string? LandingUrl { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+}
+
+/// <summary>
+/// Negative ledger entry clawing back (part of) a commission: partial refunds, or refunds after the commission was paid.
+/// Netted against the affiliate's next payable balance; a negative net balance carries over.
+/// </summary>
+public class CommissionAdjustment
+{
+    public string Id { get; set; } = Ids.New();
+    public string StoreId { get; set; } = null!;
+    public string AffiliateId { get; set; } = null!;
+    public string CommissionId { get; set; } = null!;
+    public Commission Commission { get; set; } = null!;
+    /// <summary>Always &lt;= 0.</summary>
+    public long AmountSats { get; set; }
+    public string Reason { get; set; } = null!;
+    /// <summary>Idempotency key, e.g. "refund:{pullPaymentId}", "invalid:{invoiceId}", "credit-refund:{pullPaymentId}".</summary>
+    public string SourceRef { get; set; } = null!;
+    public DateTimeOffset CreatedAt { get; set; }
+    public string? PayoutBatchId { get; set; }
+}
+
+/// <summary>A settled invoice that could not be credited yet because no BTC rate was available; retried with backoff.</summary>
+public class PendingCredit
+{
+    public string StoreId { get; set; } = null!;
+    public string InvoiceId { get; set; } = null!;
+    public int Attempts { get; set; }
+    public DateTimeOffset FirstSeenAt { get; set; }
+    public DateTimeOffset NextAttemptAt { get; set; }
+    public string? LastError { get; set; }
+    public bool GaveUp { get; set; }
 }

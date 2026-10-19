@@ -41,6 +41,39 @@ public class CommissionEngine(IDbContextFactory<MaxiAffiliatesDbContext> dbFacto
     /// <param name="rates">Returns BTC→currency rate (units per BTC) or null if unavailable.</param>
     public async Task<CreditResult> CreditSettledInvoice(SettledInvoice inv, Func<string, Task<decimal?>> rates, CancellationToken ct = default)
     {
+        var result = await CreditCore(inv, rates, ct);
+        await TrackRetry(inv, result.Outcome, ct);
+        return result;
+    }
+
+    /// <summary>Backoff for rate retries: 5 min, 10, 20 … capped at 6 h; give up after 7 days.</summary>
+    public static TimeSpan RetryDelay(int attempts) => TimeSpan.FromMinutes(Math.Min(5 * Math.Pow(2, Math.Max(attempts - 1, 0)), 360));
+    public static readonly TimeSpan RetryGiveUpAfter = TimeSpan.FromDays(7);
+
+    async Task TrackRetry(SettledInvoice inv, CreditOutcome outcome, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var p = await db.PendingCredits.FirstOrDefaultAsync(x => x.StoreId == inv.StoreId && x.InvoiceId == inv.InvoiceId, ct);
+        if (outcome != CreditOutcome.RateUnavailable)
+        {
+            if (p is null) return;
+            db.PendingCredits.Remove(p);
+        }
+        else
+        {
+            var now = clock.GetUtcNow();
+            if (p is null) { p = new PendingCredit { StoreId = inv.StoreId, InvoiceId = inv.InvoiceId, FirstSeenAt = now }; db.PendingCredits.Add(p); }
+            else if (now < p.NextAttemptAt) return; // several settle events for one invoice: count one attempt
+            p.Attempts++;
+            p.LastError = $"No BTC rate for {inv.Currency} or the commission base currency";
+            p.NextAttemptAt = now + RetryDelay(p.Attempts);
+            p.GaveUp = now - p.FirstSeenAt >= RetryGiveUpAfter;
+        }
+        try { await db.SaveChangesAsync(ct); } catch (DbUpdateException) { /* concurrent tracker, harmless */ }
+    }
+
+    async Task<CreditResult> CreditCore(SettledInvoice inv, Func<string, Task<decimal?>> rates, CancellationToken ct)
+    {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         if (await db.Commissions.AnyAsync(c => c.StoreId == inv.StoreId && c.InvoiceId == inv.InvoiceId, ct))
             return new(CreditOutcome.AlreadyCredited);
@@ -101,7 +134,7 @@ public class CommissionEngine(IDbContextFactory<MaxiAffiliatesDbContext> dbFacto
         var c = new Commission
         {
             StoreId = inv.StoreId, AffiliateId = referral.AffiliateId, Referral = referral, InvoiceId = inv.InvoiceId,
-            RuleId = rule.RuleId, PlanId = inv.PlanId, BaseAmount = q.BaseAmount, BaseCurrency = baseCur,
+            RuleId = rule.RuleId, PlanId = inv.PlanId, SaleAmount = inv.Price, SaleCurrency = inv.Currency.ToUpperInvariant(), BaseAmount = q.BaseAmount, BaseCurrency = baseCur,
             CommissionAmount = q.CommissionAmount, AmountSats = q.AmountSats, Rate = q.RateBtcBase,
             Status = CommissionStatus.Pending, CreatedAt = now, PayableAt = now.AddDays(Math.Max(settings.HoldDays, 0))
         };

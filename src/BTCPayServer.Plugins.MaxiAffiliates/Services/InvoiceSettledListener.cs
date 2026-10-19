@@ -1,80 +1,75 @@
 using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BTCPayServer.Client.Models;
-using BTCPayServer.Data;
 using BTCPayServer.Events;
 using BTCPayServer.HostedServices;
-using BTCPayServer.Plugins.MaxiAffiliates.Attribution;
 using BTCPayServer.Plugins.Subscriptions;
-using BTCPayServer.Rating;
-using BTCPayServer.Services.Invoices;
-using BTCPayServer.Services.Rates;
-using BTCPayServer.Services.Stores;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace BTCPayServer.Plugins.MaxiAffiliates.Services;
 
 /// <summary>
-/// Listens to BTCPay invoice events and credits commissions when an invoice is Settled.
-/// Works for one-time invoices and Subscriptions invoices (initial + renewals: SUBS#checkout tag → plan checkout → plan / subscriber).
-/// Uses core internals (InvoiceEvent, InvoiceEntity, PlanCheckoutData): re-verify on BTCPay upgrades.
+/// Credits commissions when invoices settle, and reverses/claws back on invalidation, invoice refunds and subscription credit refunds.
 /// </summary>
 public class InvoiceSettledListener(
-    EventAggregator events, ILogger<InvoiceSettledListener> logger, CommissionEngine engine,
-    StoreRepository stores, ApplicationDbContextFactory appDb, RateFetcher rateFetcher, DefaultRulesCollection defaultRules)
+    EventAggregator events, ILogger<InvoiceSettledListener> logger, CommissionEngine engine, CommissionLedger ledger, InvoiceCommissionMapper mapper)
     : EventHostedServiceBase(events, logger)
 {
-    protected override void SubscribeToEvents() => Subscribe<InvoiceEvent>();
+    protected override void SubscribeToEvents()
+    {
+        Subscribe<InvoiceEvent>();
+        Subscribe<SubscriptionEvent.CreditRefunded>();
+    }
 
     protected override async Task ProcessEvent(object evt, CancellationToken ct)
     {
-        if (evt is not InvoiceEvent { Invoice: { } invoice } || invoice.Status != InvoiceStatus.Settled) return;
         try
         {
-            var settled = await Map(invoice);
-            if (settled is null) return;
-            var result = await engine.CreditSettledInvoice(settled, cur => Rate(invoice, cur, ct), ct);
-            if (result.Outcome != CreditOutcome.NoReferral)
-                logger.LogInformation("MaxiAffiliates: invoice {Invoice} -> {Outcome}", invoice.Id, result.Outcome);
+            switch (evt)
+            {
+                case InvoiceEvent { Name: InvoiceEvent.MarkedInvalid, Invoice: { } inv }:
+                    Log(inv.Id, await ledger.ReverseInvoice(inv.StoreId, inv.Id, null, "Invoice marked invalid", $"invalid:{inv.Id}", ct));
+                    break;
+                case InvoiceEvent { Name: InvoiceEvent.Refund, Invoice: { } inv } e:
+                {
+                    // Sized from the refund pull payment when possible; otherwise treated as a full refund.
+                    decimal? fraction = null;
+                    var com = await ledger.FindByInvoice(inv.StoreId, inv.Id, ct);
+                    if (com is not null && e.PullPaymentId is { } pp && await mapper.PullPaymentAmount(pp, ct) is { } amt)
+                        fraction = CommissionLedger.RefundFraction(com, amt.amount, amt.currency);
+                    Log(inv.Id, await ledger.ReverseInvoice(inv.StoreId, inv.Id, fraction, "Invoice refunded", $"refund:{e.PullPaymentId ?? inv.Id}", ct));
+                    break;
+                }
+                case InvoiceEvent { Invoice: { Status: InvoiceStatus.Settled } inv }:
+                    if (await mapper.Map(inv) is { } settled)
+                    {
+                        var result = await engine.CreditSettledInvoice(settled, cur => mapper.Rate(inv, cur, ct), ct);
+                        if (result.Outcome != CreditOutcome.NoReferral)
+                            logger.LogInformation("MaxiAffiliates: invoice {Invoice} -> {Outcome}", inv.Id, result.Outcome);
+                    }
+                    break;
+                case SubscriptionEvent.CreditRefunded r:
+                {
+                    var storeId = await mapper.StoreOfSubscriber(r.Subscriber.Id, ct);
+                    if (storeId is null) break;
+                    var com = await ledger.LatestForSubscriber(storeId, r.Subscriber.Id.ToString(), ct);
+                    if (com is null) break;
+                    var fraction = CommissionLedger.RefundFraction(com, r.Amount, r.Currency);
+                    Log(com.InvoiceId, await ledger.ReverseCommission(storeId, com.Id, fraction, "Subscription credit refunded", $"credit-refund:{r.PullPaymentId}", ct));
+                    break;
+                }
+            }
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            logger.LogError(e, "MaxiAffiliates: failed to process settled invoice {Invoice}", invoice.Id);
+            logger.LogError(e, "MaxiAffiliates: failed to process {Event}", evt.GetType().Name);
         }
     }
 
-    async Task<SettledInvoice?> Map(InvoiceEntity invoice)
+    void Log(string invoiceId, ReversalResult r)
     {
-        var store = await stores.FindStore(invoice.StoreId);
-        if (store is null) return null;
-        var meta = invoice.Metadata.ToJObject();
-        string? planId = meta["planId"]?.ToString();
-        string? subscriberId = null;
-        if (SubscriptionHostedService.GetCheckoutPlanIdFromInvoice(invoice) is { } checkoutId)
-        {
-            await using var ctx = appDb.CreateContext();
-            var co = await ctx.PlanCheckouts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == checkoutId);
-            if (co is not null)
-            {
-                planId ??= co.PlanId;
-                subscriberId = co.SubscriberId?.ToString();
-            }
-        }
-        planId ??= invoice.Metadata.ItemCode;
-        return new SettledInvoice(invoice.StoreId, invoice.Id, invoice.Price, invoice.Currency, invoice.Metadata.BuyerEmail,
-            meta[ReferralMetadata.RefKey]?.ToString(), planId, subscriberId, store.GetStoreBlob().DefaultCurrency ?? "USD");
-    }
-
-    async Task<decimal?> Rate(InvoiceEntity invoice, string currency, CancellationToken ct)
-    {
-        var pair = new CurrencyPair("BTC", currency);
-        if (invoice.TryGetRate(pair, out var r) && r > 0) return r; // settlement-time rate stored on the invoice
-        var store = await stores.FindStore(invoice.StoreId);
-        if (store is null) return null;
-        var res = await rateFetcher.FetchRate(pair, store.GetStoreBlob().GetRateRules(defaultRules), null, ct);
-        return res.BidAsk?.Bid is > 0 ? res.BidAsk.Bid : null;
+        if (r.Outcome != ReversalOutcome.NoCommission)
+            logger.LogInformation("MaxiAffiliates: invoice {Invoice} reversal -> {Outcome} ({Sats} sats)", invoiceId, r.Outcome, r.ClawedSats);
     }
 }

@@ -190,6 +190,14 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
                     b.Property<string>("RuleId")
                         .HasColumnType("text");
 
+                    b.Property<decimal>("SaleAmount")
+                        .HasPrecision(28, 8)
+                        .HasColumnType("numeric(28,8)");
+
+                    b.Property<string>("SaleCurrency")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -212,6 +220,49 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
                     b.HasIndex("StoreId", "Status", "PayableAt");
 
                     b.ToTable("Commissions", "BTCPayServer.Plugins.MaxiAffiliates");
+                });
+
+            modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.CommissionAdjustment", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AffiliateId")
+                        .HasColumnType("text");
+
+                    b.Property<long>("AmountSats")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("CommissionId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PayoutBatchId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SourceRef")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("StoreId")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CommissionId");
+
+                    b.HasIndex("AffiliateId", "PayoutBatchId");
+
+                    b.HasIndex("StoreId", "SourceRef")
+                        .IsUnique();
+
+                    b.ToTable("CommissionAdjustments", "BTCPayServer.Plugins.MaxiAffiliates");
                 });
 
             modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.CommissionRule", b =>
@@ -309,6 +360,37 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
                     b.ToTable("PayoutBatches", "BTCPayServer.Plugins.MaxiAffiliates");
                 });
 
+            modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.PendingCredit", b =>
+                {
+                    b.Property<string>("StoreId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("InvoiceId")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("GaveUp")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("StoreId", "InvoiceId");
+
+                    b.HasIndex("GaveUp", "NextAttemptAt");
+
+                    b.ToTable("PendingCredits", "BTCPayServer.Plugins.MaxiAffiliates");
+                });
+
             modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.Referral", b =>
                 {
                     b.Property<string>("Id")
@@ -374,6 +456,16 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
                     b.Navigation("PayoutBatch");
 
                     b.Navigation("Referral");
+                });
+
+            modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.CommissionAdjustment", b =>
+                {
+                    b.HasOne("BTCPayServer.Plugins.MaxiAffiliates.Data.Commission", "Commission")
+                        .WithMany()
+                        .HasForeignKey("CommissionId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Commission");
                 });
 
             modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.PayoutBatch", b =>

@@ -56,6 +56,12 @@ Psql into the dev DB: `sudo docker exec maxiaff-regtest-postgres-1 psql -h 127.0
 ```
 Screenshots: `docs/screens/m4/`.
 
+## M5 acceptance (hold, refunds/clawback, threshold, rate retry)
+```bash
+~/.venvs/pw/bin/python dev/acceptance_m5.py    # 18 checks; temporarily adds X_MXN = yadio(X_MXN) to the dev store's rate script, then restores it
+```
+Screenshots: `docs/screens/m5/`.
+
 ## Migrations
 The plugin project doesn't copy BTCPay assemblies, so `dotnet ef` uses the helper startup project `dev/MaxiAffiliates.DesignTime`. It needs the dev Postgres running.
 ```bash

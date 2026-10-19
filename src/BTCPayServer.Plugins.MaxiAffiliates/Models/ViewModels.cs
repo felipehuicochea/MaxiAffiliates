@@ -51,4 +51,8 @@ public class CommissionsViewModel
     public string StoreId { get; set; } = null!;
     public BTCPayServer.Plugins.MaxiAffiliates.Data.CommissionStatus? Status { get; set; }
     public BTCPayServer.Plugins.MaxiAffiliates.Services.CommissionRow[] Rows { get; set; } = [];
+    public BTCPayServer.Plugins.MaxiAffiliates.Services.AffiliateBalance[] Balances { get; set; } = [];
+    public PendingCredit[] PendingCredits { get; set; } = [];
+    public System.Collections.Generic.Dictionary<string, long> Adjustments { get; set; } = new();
+    public long MinPayoutSats { get; set; }
 }

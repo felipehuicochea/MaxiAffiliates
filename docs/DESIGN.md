@@ -68,3 +68,27 @@
   - `/stores/{id}/plugins/maxiaffiliates/settings` holds the program settings and the per-plan rules (plan picker built from the store's Subscriptions plans).
   - `/stores/{id}/plugins/maxiaffiliates/commissions` is the ledger.
   - Manage actions need `btcpay.store.canmanageaffiliates`.
+
+## M5: hold, clawback, threshold
+
+- **Hold period.** A commission is created as `Pending` with `PayableAt = settledAt + HoldDays`. `CommissionMaintenanceService` runs every 10 minutes (the first run is 30 s after start). It moves `Pending` to `Payable` once `PayableAt <= now`. Admins can trigger it from **Commissions → Process holds and retries now**.
+- **Reversals.** All of these are handled by `InvoiceSettledListener` and applied in `CommissionLedger`, idempotently via `CommissionAdjustments.SourceRef`:
+  - `invoice_refund`: a refund pull payment was created. It's sized from the pull payment's `Limit` and `Currency` when that currency is the sale currency, the base currency, BTC or SATS; otherwise it counts as a full refund. The clawback happens when the refund is created, not when it is claimed, which is the conservative choice.
+  - `invoice_markedInvalid`: full reversal. BTCPay 2.4.5 doesn't allow Settled → Invalid through the API, so this handler is defensive and covered by tests only.
+  - Subscriptions `CreditRefunded` hits the subscriber's latest commission, sized against its sale amount.
+  - The manual **Reverse** button on a ledger row.
+- **Clawback rules.**
+  - A full refund of an unpaid commission (Pending or Payable) marks it `Reversed`. It never matures, and any earlier partial clawbacks on it stop counting.
+  - A partial refund, or any refund after the commission was `Paid`, adds a negative `CommissionAdjustment`, capped at what's left of that commission.
+  - An adjustment counts toward the balance once its commission is `Payable` or `Paid`.
+- **Threshold.** For each affiliate, net = unbatched Payable sats + effective adjustments.
+  - `Due` when net ≥ `MinPayoutSats` (at least 1 sat).
+  - Otherwise it carries over: `BelowThreshold`, or `NegativeCarryOver` when net is negative.
+  - Non-active affiliates are `AffiliateInactive` (held).
+  - M6 builds payout batches from `Due` balances and sets `PayoutBatchId` on the commissions and adjustments it pays.
+- **Missing rates.** A `RateUnavailable` result goes into `PendingCredits`.
+  - Backoff is 5 min doubling, capped at 6 h. Several settle events for one invoice count as one attempt.
+  - It gives up after 7 days.
+  - "Process now" retries every waiting credit immediately, including ones it gave up on.
+  - Retries rebuild the invoice from `InvoiceRepository` and use the store's current rate rules.
+- **Display.** Fiat amounts are rounded to the currency's divisibility (`CurrencyNameTable`). Scope, type, balance-state and reversal-reason labels are friendly localizable keys.

@@ -35,7 +35,11 @@ public class Plugin : BaseBTCPayServerPlugin
         services.AddSingleton<PlanCheckoutService>();
         services.AddSingleton<CommissionEngine>();
         services.AddSingleton<ProgramSettingsService>();
+        services.AddSingleton<CommissionLedger>();
+        services.AddSingleton<InvoiceCommissionMapper>();
         services.AddHostedService<InvoiceSettledListener>();
+        services.AddSingleton<CommissionMaintenanceService>();
+        services.AddHostedService(sp => sp.GetRequiredService<CommissionMaintenanceService>());
         services.AddTranslationProvider<MaxiAffiliatesTranslationProvider>();
         services.AddUIExtension("store-integrations-nav", $"{ViewsDirectory}/StoreNavExtension.cshtml");
         services.AddPolicyDefinitions(

@@ -1,10 +1,66 @@
 @model CommissionsViewModel
+@inject BTCPayServer.Services.Rates.CurrencyNameTable Currencies
 @{
     ViewData.SetLayoutModel(new LayoutModel(Plugin.Area, StringLocalizer["Commissions"]));
+    string Sats(long v) => v.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
+    string StateBadge(BalanceState s) => s switch { BalanceState.Due => "bg-success", BalanceState.BelowThreshold => "bg-secondary", BalanceState.NegativeCarryOver => "bg-danger", _ => "bg-warning text-dark" };
+    string StatusBadge(CommissionStatus s) => s switch { CommissionStatus.Payable => "bg-success", CommissionStatus.Paid => "bg-primary", CommissionStatus.Reversed => "bg-danger", _ => "bg-secondary" };
 }
-<div class="sticky-header"><h2>@ViewData["Title"]</h2></div>
+<div class="sticky-header d-flex justify-content-between align-items-center">
+  <h2>@ViewData["Title"]</h2>
+  <form method="post" asp-action="RunMaintenance" asp-route-storeId="@Model.StoreId" permission="@MaxiAffiliatesPolicies.CanManageAffiliates">
+    <button class="btn btn-secondary" type="submit" id="maxiaff-run-maintenance" text-translate="true">Process holds and retries now</button>
+  </form>
+</div>
 <partial name="_StatusMessage" />
 <partial name="UIAffiliateSettings/_Tabs" />
+
+<h4 text-translate="true">Balances</h4>
+<p class="text-secondary">@StringLocalizer["Minimum payout: {0} sats. Smaller or negative balances carry over to the next cycle.", Sats(Model.MinPayoutSats)]</p>
+@if (Model.Balances.Length == 0)
+{
+  <p class="text-secondary" text-translate="true">No open balances.</p>
+}
+else
+{
+<div class="table-responsive mb-4">
+<table class="table" id="maxiaff-balances">
+  <thead><tr>
+    <th text-translate="true">Affiliate</th><th class="text-end" text-translate="true">On hold</th><th class="text-end" text-translate="true">Payable</th>
+    <th class="text-end" text-translate="true">Clawbacks</th><th class="text-end" text-translate="true">Net</th><th text-translate="true">Status</th><th text-translate="true">Next release</th>
+  </tr></thead>
+  <tbody>
+  @foreach (var b in Model.Balances)
+  {
+    <tr data-affiliate="@b.Email" data-state="@b.State" data-net="@b.NetSats">
+      <td>@b.Email <span class="text-secondary">(@b.Code)</span></td>
+      <td class="text-end">@Sats(b.PendingSats)</td>
+      <td class="text-end">@Sats(b.PayableSats)</td>
+      <td class="text-end">@Sats(b.AdjustmentSats)</td>
+      <td class="text-end fw-semibold">@Sats(b.NetSats) sats</td>
+      <td><span class="badge @StateBadge(b.State)">@StringLocalizer[MaxiAffDisplay.StateKey(b.State)]</span></td>
+      <td>@(b.NextMaturity?.ToString("yyyy-MM-dd") ?? "—")</td>
+    </tr>
+  }
+  </tbody>
+</table>
+</div>
+}
+
+@if (Model.PendingCredits.Length > 0)
+{
+<div class="alert alert-warning" id="maxiaff-pending-credits">
+  <strong text-translate="true">Payments waiting for an exchange rate</strong>
+  <ul class="mb-0">
+  @foreach (var p in Model.PendingCredits)
+  {
+    <li>@p.InvoiceId: @StringLocalizer["{0} attempts, next {1}", p.Attempts, p.NextAttemptAt.ToString("yyyy-MM-dd HH:mm")]@(p.GaveUp ? " — " + StringLocalizer["gave up, use Process now to retry"] : "")</li>
+  }
+  </ul>
+</div>
+}
+
+<h4 text-translate="true">Ledger</h4>
 <form method="get" class="d-flex gap-2 mb-3">
   <select name="status" class="form-select w-auto">
     <option value="" text-translate="true">All statuses</option>
@@ -23,22 +79,31 @@ else
   <thead><tr>
     <th text-translate="true">Date</th><th text-translate="true">Affiliate</th><th text-translate="true">Customer</th><th text-translate="true">Invoice</th>
     <th class="text-end" text-translate="true">Sale</th><th class="text-end" text-translate="true">Commission</th><th class="text-end">sats</th>
-    <th text-translate="true">Status</th><th text-translate="true">Payable from</th>
+    <th text-translate="true">Status</th><th text-translate="true">Payable from</th><th></th>
   </tr></thead>
   <tbody>
   @foreach (var row in Model.Rows)
   {
     var c = row.Commission;
-    <tr>
+    Model.Adjustments.TryGetValue(c.Id, out var adj);
+    <tr data-invoice="@c.InvoiceId" data-status="@c.Status">
       <td>@c.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
       <td>@row.AffiliateEmail <span class="text-secondary">(@row.AffiliateCode)</span></td>
       <td>@(row.CustomerKey.StartsWith("email:") ? row.CustomerKey[6..] : "—")</td>
       <td><a asp-area="" asp-controller="UIInvoice" asp-action="Invoice" asp-route-invoiceId="@c.InvoiceId">@c.InvoiceId</a></td>
-      <td class="text-end">@c.BaseAmount.ToString("0.########") @c.BaseCurrency</td>
-      <td class="text-end">@c.CommissionAmount.ToString("0.########") @c.BaseCurrency</td>
-      <td class="text-end">@c.AmountSats.ToString("N0")</td>
-      <td>@StringLocalizer[c.Status.ToString()]</td>
+      <td class="text-end">@MaxiAffDisplay.Amount(Currencies, c.BaseAmount, c.BaseCurrency)</td>
+      <td class="text-end">@MaxiAffDisplay.Amount(Currencies, c.CommissionAmount, c.BaseCurrency)</td>
+      <td class="text-end">@Sats(c.AmountSats)@if (adj != 0) {<br /><span class="text-danger small" data-clawback="@adj">@Sats(adj)</span>}</td>
+      <td><span class="badge @StatusBadge(c.Status)">@StringLocalizer[c.Status.ToString()]</span>@if (c.ReversedReason is not null) {<div class="small text-secondary">@StringLocalizer[c.ReversedReason]</div>}</td>
       <td>@c.PayableAt.ToString("yyyy-MM-dd")</td>
+      <td class="text-end">
+        @if (c.ReversedAt is null)
+        {
+          <form method="post" asp-action="ReverseCommission" asp-route-storeId="@Model.StoreId" asp-route-commissionId="@c.Id" permission="@MaxiAffiliatesPolicies.CanManageAffiliates">
+            <button class="btn btn-link text-danger p-0" type="submit" text-translate="true">Reverse</button>
+          </form>
+        }
+      </td>
     </tr>
   }
   </tbody>

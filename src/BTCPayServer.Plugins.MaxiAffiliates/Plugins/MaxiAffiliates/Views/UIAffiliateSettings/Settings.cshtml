@@ -1,8 +1,10 @@
 @model ProgramSettingsViewModel
+@inject BTCPayServer.Services.Rates.CurrencyNameTable Currencies
 @{
     ViewData.SetLayoutModel(new LayoutModel(Plugin.Area, StringLocalizer["Affiliate program settings"]));
     IEnumerable<SelectListItem> Enum<T>(T? selected) where T : struct, System.Enum =>
-        System.Enum.GetValues<T>().Select(v => new SelectListItem(StringLocalizer[v.ToString()], v.ToString(), selected?.Equals(v) == true));
+        System.Enum.GetValues<T>().Select(v => new SelectListItem(StringLocalizer[Label(v)], v.ToString(), selected?.Equals(v) == true));
+    string Label(object v) => v switch { CommissionScope sc => MaxiAffDisplay.ScopeKey(sc), CommissionType t => MaxiAffDisplay.TypeKey(t), _ => v.ToString()! };
     string PlanName(string? id) => id is null ? StringLocalizer["All plans (store default rule)"] : Model.Plans.FirstOrDefault(p => p.Id == id)?.Name ?? id;
     var s = Model.Settings;
 }
@@ -18,7 +20,7 @@
   </div>
   <div class="mb-3">
     <label asp-for="Settings.DefaultPercent" class="form-label" text-translate="true">Default commission (%)</label>
-    <input asp-for="Settings.DefaultPercent" type="number" step="0.01" min="0" max="100" class="form-control" />
+    <input asp-for="Settings.DefaultPercent" value="@s.DefaultPercent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" type="number" step="0.01" min="0" max="100" class="form-control" />
   </div>
   <div class="row mb-3">
     <div class="col">
@@ -83,8 +85,8 @@ else
   {
     <tr>
       <td>@PlanName(r.PlanId)</td>
-      <td>@(r.Type == CommissionType.Percent ? $"{r.Value:0.##} %" : $"{r.Value:0.########} {Model.EffectiveBaseCurrency}")</td>
-      <td>@StringLocalizer[r.Scope.ToString()]@(r.Scope == CommissionScope.FirstN ? $" (N = {r.FirstN})" : "")</td>
+      <td>@(r.Type == CommissionType.Percent ? $"{r.Value:0.##} %" : MaxiAffDisplay.Amount(Currencies, r.Value, Model.EffectiveBaseCurrency))</td>
+      <td>@MaxiAffDisplay.Scope(StringLocalizer, r.Scope, r.FirstN)</td>
       <td>@(r.Enabled ? StringLocalizer["Enabled"] : StringLocalizer["Disabled"])</td>
       <td class="text-end">
         <form method="post" asp-action="DeleteRule" asp-route-storeId="@Model.StoreId" asp-route-ruleId="@r.Id" permission="@MaxiAffiliatesPolicies.CanManageAffiliates">

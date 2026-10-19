@@ -19,6 +19,7 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Controllers;
 [Authorize(Policy = MaxiAffiliatesPolicies.CanViewAffiliates, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
 public class UIAffiliateSettingsController(
     AffiliateService affiliates, ProgramSettingsService program, StoreRepository stores,
+    CommissionLedger ledger, CommissionMaintenanceService maintenance,
     ApplicationDbContextFactory appDb, IStringLocalizer localizer) : Controller
 {
     [HttpGet("~/stores/{storeId}/plugins/maxiaffiliates/settings")]
@@ -78,11 +79,51 @@ public class UIAffiliateSettingsController(
     [HttpGet("~/stores/{storeId}/plugins/maxiaffiliates/commissions")]
     public async Task<IActionResult> Commissions(string storeId, CommissionStatus? status)
     {
+        var ct = HttpContext.RequestAborted;
+        var settings = await affiliates.GetSettings(storeId, ct);
         return View(new CommissionsViewModel
         {
-            StoreId = storeId, Status = status,
-            Rows = await program.ListCommissions(storeId, status, 200, HttpContext.RequestAborted)
+            StoreId = storeId, Status = status, MinPayoutSats = settings.MinPayoutSats,
+            Rows = await program.ListCommissions(storeId, status, 200, ct),
+            Balances = await ledger.Balances(storeId, ct),
+            PendingCredits = await ledger.ListPendingCredits(storeId, ct),
+            Adjustments = await ledger.AdjustmentTotals(storeId, ct)
         });
+    }
+
+    [HttpPost("~/stores/{storeId}/plugins/maxiaffiliates/commissions/run")]
+    [Authorize(Policy = MaxiAffiliatesPolicies.CanManageAffiliates, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RunMaintenance(string storeId)
+    {
+        await ledger.MakeRetriesDue(storeId, HttpContext.RequestAborted);
+        var r = await maintenance.RunOnce(storeId, HttpContext.RequestAborted);
+        TempData.SetStatusMessageModel(new StatusMessageModel
+        {
+            Severity = StatusMessageModel.StatusSeverity.Success,
+            Message = localizer["Retried {0} waiting payments ({1} credited); {2} commissions became payable.", r.Retried, r.Credited, r.Matured]
+        });
+        return RedirectToAction(nameof(Commissions), new { storeId });
+    }
+
+    [HttpPost("~/stores/{storeId}/plugins/maxiaffiliates/commissions/{commissionId}/reverse")]
+    [Authorize(Policy = MaxiAffiliatesPolicies.CanManageAffiliates, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReverseCommission(string storeId, string commissionId)
+    {
+        var r = await ledger.ReverseCommission(storeId, commissionId, null, "Reversed manually", $"manual:{commissionId}", HttpContext.RequestAborted);
+        if (r.Outcome == ReversalOutcome.NoCommission) return NotFound();
+        TempData.SetStatusMessageModel(new StatusMessageModel
+        {
+            Severity = r.Outcome is ReversalOutcome.Reversed or ReversalOutcome.ClawedBack ? StatusMessageModel.StatusSeverity.Success : StatusMessageModel.StatusSeverity.Info,
+            Message = r.Outcome switch
+            {
+                ReversalOutcome.Reversed => localizer["Commission reversed."],
+                ReversalOutcome.ClawedBack => localizer["Commission was already paid: {0} sats will be deducted from the next payout.", r.ClawedSats],
+                _ => localizer["Nothing to reverse."]
+            }
+        });
+        return RedirectToAction(nameof(Commissions), new { storeId });
     }
 
     IActionResult Status(string storeId, bool ok, string message)
