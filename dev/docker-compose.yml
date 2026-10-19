@@ -1,0 +1,53 @@
+# Uses network_mode: host because bridge networking between containers does not work on this box (nested docker, no iptables NAT).
+# Every service binds to 127.0.0.1 only.
+# Minimal regtest stack for MaxiAffiliates dev (no Lightning, no Tor). Regtest only, public test creds from BTCPay's test compose.
+name: maxiaff-regtest
+services:
+  bitcoind:
+    network_mode: host
+    image: btcpayserver/bitcoin:31.1-1
+    mem_limit: 384m
+    environment:
+      BITCOIN_NETWORK: regtest
+      BITCOIN_WALLETDIR: "/data/wallets"
+      BITCOIN_EXTRA_ARGS: |-
+        rpcuser=ceiwHEbqWI83
+        rpcpassword=DwubwWsoo3
+        rpcport=43782
+        rpcbind=127.0.0.1:43782
+        rpcallowip=127.0.0.1/32
+        port=39388
+        bind=127.0.0.1:39388
+        whitelist=127.0.0.1/32
+        fallbackfee=0.0002
+        dbcache=50
+        maxmempool=50
+    volumes: ["bitcoin_datadir:/data"]
+  postgres:
+    network_mode: host
+    image: postgres:18.1
+    mem_limit: 256m
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+    command: ["-c","fsync=off","-c","synchronous_commit=off","-c","full_page_writes=off","-c","shared_buffers=32MB","-c","max_connections=50","-c","port=39372","-c","listen_addresses=127.0.0.1"]
+    volumes: ["postgres_datadir:/var/lib/postgresql"]
+  nbxplorer:
+    network_mode: host
+    image: nicolasdorier/nbxplorer:2.6.18
+    restart: on-failure
+    mem_limit: 384m
+    environment:
+      NBXPLORER_NETWORK: regtest
+      NBXPLORER_CHAINS: "btc"
+      NBXPLORER_BTCRPCURL: http://127.0.0.1:43782/
+      NBXPLORER_BTCNODEENDPOINT: 127.0.0.1:39388
+      NBXPLORER_BTCRPCUSER: ceiwHEbqWI83
+      NBXPLORER_BTCRPCPASSWORD: DwubwWsoo3
+      NBXPLORER_BIND: 127.0.0.1:32838
+      NBXPLORER_POSTGRES: User ID=postgres;Host=127.0.0.1;Port=39372;Database=nbxplorer
+      NBXPLORER_NOAUTH: 1
+      NBXPLORER_EXPOSERPC: 1
+    depends_on: [bitcoind, postgres]
+volumes:
+  bitcoin_datadir:
+  postgres_datadir:
