@@ -39,6 +39,10 @@ public class Plugin : BaseBTCPayServerPlugin
         services.AddSingleton<InvoiceCommissionMapper>();
         services.AddSingleton<IPayoutGateway, BtcPayPayoutGateway>();
         services.AddSingleton<PayoutCycleService>();
+        services.AddSingleton<PanelAuthService>();
+        services.AddSingleton<AffiliatePanelService>();
+        services.AddReportProvider<AffiliateCommissionsReportProvider>();
+        services.AddReportProvider<AffiliatePayoutsReportProvider>();
         services.AddHostedService<InvoiceSettledListener>();
         services.AddSingleton<CommissionMaintenanceService>();
         services.AddHostedService(sp => sp.GetRequiredService<CommissionMaintenanceService>());

@@ -1,0 +1,12 @@
+@model PanelLoginViewModel
+@{
+    Layout = "_LayoutSimple";
+    ViewData["Title"] = StringLocalizer["Check your email"];
+}
+<div class="row justify-content-center my-5">
+  <div class="col-md-8 col-lg-5" id="maxiaff-panel-sent">
+    <h1 class="h3 mb-3">@ViewData["Title"]</h1>
+    <p text-translate="true">If this email belongs to an affiliate of this store, a sign-in link is on its way. The link works once and expires in 15 minutes.</p>
+    <a asp-action="Login" asp-route-storeId="@Model.StoreId" text-translate="true">Back</a>
+  </div>
+</div>

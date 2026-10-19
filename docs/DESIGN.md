@@ -127,3 +127,30 @@
   - the store's LN node (merchant), a hot on-chain wallet with funds, and the automated payout processors (instant)
   - an "Affiliate wallet" store on the customer node with a Lightning address. Its LNURL (http://127.0.0.1) is the LN affiliate's destination.
 - BTCPay's SSRF protection blocks local LNURLs, so `dev/run-btcpay.sh` sets `BTCPAY_SSRFEXCEPTIONS=127.0.0.1:14142` for dev only.
+
+## M7: Affiliate panel and admin reports
+
+**Access (why magic link + token link).** Affiliates are not BTCPay users, so the panel has its own passwordless sign-in at
+`/plugins/maxiaffiliates/{storeId}/panel`. BTCPay exposes the store's (or, if allowed, the server's) SMTP through
+`EmailSenderFactory`, so when `IsComplete(storeId)` is true the login page sends a **magic link by email** (single use,
+15 minutes, max 3 per 15 minutes per affiliate, identical "check your email" response for unknown addresses). Many stores
+never set up SMTP, so the admin can also issue a **secure token link** ("Panel link" on the Affiliates list): shown once,
+valid 30 days, reusable until reissued (reissue revokes the previous one). Both links open a confirm page and only a POST
+redeems them, so mail scanners that prefetch links cannot burn them.
+
+Tokens are 256-bit `RandomNumberGenerator` values (base64url); only SHA-256 hashes are stored (`AccessTokens` table, kinds
+MagicLink / AdminLink / Session). A redeemed link creates a 7-day session in an HttpOnly, SameSite=Lax cookie (Secure on
+HTTPS) scoped to the panel path of that store. Pending and suspended affiliates can sign in (read-only for suspended);
+banned cannot, and banning revokes all their tokens. Changing the payout address ends every other session and link and
+emails the affiliate a change notice when email is configured. Pages are `Cache-Control: no-store`; auth pages send
+`Referrer-Policy: no-referrer`.
+
+**Panel.** Referral link + code, stats (link clicks, referred customers, sales, earned net of clawbacks, paid out), balance
+(pending/on hold with next release date, payable, clawbacks, next payout and its state vs. the minimum), last 50
+commissions, payout history (cancelled batches hidden), and payout method/address update (validated for the store's
+network and enabled methods; already approved payouts keep their snapshot address). Link clicks are counted on
+`/aff/{store}/{code}` for active codes (`Affiliates.LinkClicks`).
+
+**Admin reports.** Two `ReportProvider`s appear in BTCPay's Reporting page (and `POST /api/v1/stores/{id}/reports`), with
+BTCPay's built-in filters, charts and CSV export: *Affiliate commissions* (per commission: affiliate, invoice, plan, sale,
+commission, sats, clawback, status, payable/paid dates, payout id) and *Affiliate payouts* (per batch).

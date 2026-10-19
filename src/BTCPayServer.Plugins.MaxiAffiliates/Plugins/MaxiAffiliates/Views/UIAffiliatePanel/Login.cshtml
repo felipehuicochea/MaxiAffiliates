@@ -1,0 +1,30 @@
+@model PanelLoginViewModel
+@{
+    Layout = "_LayoutSimple";
+    ViewData["Title"] = StringLocalizer["{0} affiliate panel", Model.StoreName];
+}
+<div class="row justify-content-center my-5">
+  <div class="col-md-8 col-lg-5" id="maxiaff-panel-login">
+    <h1 class="h3 mb-2">@ViewData["Title"]</h1>
+    @if (Model.Error is not null)
+    {
+      <div class="alert alert-danger" id="maxiaff-panel-error">@Model.Error</div>
+    }
+    @if (Model.EmailAvailable)
+    {
+      <p class="text-secondary" text-translate="true">Enter the email you signed up with. We will send you a one-time sign-in link.</p>
+      <form method="post" asp-action="Login" asp-route-storeId="@Model.StoreId">
+        <div class="form-group mb-3">
+          <label for="email" class="form-label" text-translate="true">Email</label>
+          <input id="email" name="email" type="email" value="@Model.Email" class="form-control" required autocomplete="email" />
+          <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+        <button type="submit" class="btn btn-primary" id="maxiaff-panel-send" text-translate="true">Email me a sign-in link</button>
+      </form>
+    }
+    else
+    {
+      <p class="text-secondary" id="maxiaff-panel-noemail" text-translate="true">This store cannot send email yet. Ask the store for your personal affiliate panel link.</p>
+    }
+  </div>
+</div>

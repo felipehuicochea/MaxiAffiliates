@@ -85,3 +85,11 @@ Then follow BTCPay's convention: move the `[DbContext]`/`[Migration]` attributes
 - MIT license holder: Felipe Huicochea (2026), confirmed.
 - README tip address: bc1q2pdqh45csx983dt0vedstn0sagm4m0zt8umpuy, confirmed.
 - Public repo (planned under felipehuicochea): not created; no remote configured.
+
+## M7 acceptance (affiliate panel + reports)
+```bash
+sudo docker compose -f dev/docker-compose.yml -p maxiaff-regtest --profile mail up -d bitcoind postgres nbxplorer mailpit   # Mailpit: local SMTP sink, 64 MB
+nohup dev/run-btcpay.sh > /tmp/btcpay.log 2>&1 &
+~/.venvs/pw/bin/python dev/acceptance_m7.py      # 28 checks, screenshots in docs/screens/m7 (tokens masked)
+```
+The script points the store's SMTP at Mailpit (127.0.0.1:39025) for the magic-link part and clears it again at the end.

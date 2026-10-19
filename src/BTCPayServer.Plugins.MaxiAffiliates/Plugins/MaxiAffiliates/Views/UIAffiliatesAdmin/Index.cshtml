@@ -10,6 +10,15 @@
 </div>
 <partial name="_StatusMessage" />
 <partial name="UIAffiliateSettings/_Tabs" />
+@if (TempData["MaxiAffPanelLink"] is string panelLink)
+{
+  <div class="alert alert-info" id="maxiaff-admin-panel-link-box">
+    <div text-translate="true">Personal panel link (shown once, valid 30 days). Send it to the affiliate privately; issuing a new one revokes this one.</div>
+    <input class="form-control mt-2" readonly id="maxiaff-admin-panel-link" value="@panelLink" onclick="this.select()" />
+  </div>
+}
+<p class="text-secondary">@StringLocalizer["Affiliate panel:"] <a href="@Model.PanelLoginUrl" id="maxiaff-panel-url" target="_blank" rel="noopener">@Model.PanelLoginUrl</a>
+  @if (Model.EmailConfigured) { <span class="badge bg-success" text-translate="true">Sign-in by email</span> } else { <span class="badge bg-secondary" id="maxiaff-noemail-badge" text-translate="true">Email not set up: issue panel links</span> }</p>
 <p class="text-secondary">@StringLocalizer["Public signup page:"] <a href="@Model.SignupUrl" id="maxiaff-signup-url" target="_blank" rel="noopener">@Model.SignupUrl</a></p>
 <div class="card mb-4"><div class="card-body">
   <h5 class="card-title" text-translate="true">Referral links</h5>
@@ -58,6 +67,10 @@ else
             var css = act == AffiliateAction.Ban ? "btn-outline-danger" : act == AffiliateAction.Suspend ? "btn-outline-secondary" : "btn-success";
             <button type="submit" class="btn btn-sm @css" formaction="@Url.Action("Act", "UIAffiliatesAdmin", new { storeId = Model.StoreId, affiliateId = a.Id, op = act })" data-action="@act"
                     data-confirm="@(act == AffiliateAction.Ban ? StringLocalizer["Ban this affiliate? This cannot be undone."].Value : null)" onclick="return !this.dataset.confirm || confirm(this.dataset.confirm)">@StringLocalizer[act.ToString()]</button>
+          }
+          @if (a.Status != AffiliateStatus.Banned)
+          {
+            <button type="submit" class="btn btn-sm btn-outline-primary" formaction="@Url.Action("PanelLink", "UIAffiliatesAdmin", new { storeId = Model.StoreId, affiliateId = a.Id })" data-action="PanelLink" text-translate="true">Panel link</button>
           }
         </form>
       </td>

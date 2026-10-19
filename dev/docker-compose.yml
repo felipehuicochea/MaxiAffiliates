@@ -98,6 +98,16 @@ services:
         log-level=info
     volumes: ["./.ln/customer:/root/.lightning"]
     depends_on: [bitcoind]
+  mailpit:
+    # Local SMTP sink (profile "mail") so the affiliate-panel magic link can be tested end to end. Nothing leaves the box.
+    profiles: ["mail"]
+    network_mode: host
+    image: axllent/mailpit:v1.27
+    mem_limit: 64m
+    environment:
+      MP_SMTP_BIND_ADDR: 127.0.0.1:39025
+      MP_UI_BIND_ADDR: 127.0.0.1:39026
+      MP_MAX_MESSAGES: 200
 volumes:
   bitcoin_datadir:
   postgres_datadir:

@@ -23,7 +23,7 @@ public class ReferralCheckoutRequest
 [Area(Plugin.Area)]
 [AllowAnonymous]
 public class UIReferralController(
-    AffiliateService affiliates, ReferralService referrals, PlanCheckoutService checkouts, IAttributionStrategy strategy) : Controller
+    AffiliateService affiliates, ReferralService referrals, PlanCheckoutService checkouts, IAttributionStrategy strategy, AffiliatePanelService panel) : Controller
 {
     /// <summary>Referral link. Records the click (first-click cookie) and redirects to the store's landing URL with ?ref=CODE.</summary>
     [HttpGet("~/aff/{storeId}/{code}")]
@@ -37,6 +37,7 @@ public class UIReferralController(
         string? refForLanding = null;
         if (ReferralCookie.IsWellFormedCode(code) && await affiliates.FindActiveByCode(storeId, code, HttpContext.RequestAborted) is { } aff)
         {
+            await panel.CountClick(aff.Id, HttpContext.RequestAborted);
             var newCookie = referrals.CookieAfterClick(existing, aff.Code);
             if (newCookie is not null)
                 Response.Cookies.Append(cookieName, newCookie, CookieOptions());

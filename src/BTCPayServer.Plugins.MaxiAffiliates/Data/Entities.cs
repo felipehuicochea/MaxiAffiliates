@@ -20,6 +20,9 @@ public class Affiliate
     public PayoutMethodKind PayoutMethod { get; set; }
     /// <summary>LN address / LNURL or BTC address.</summary>
     public string PayoutDestination { get; set; } = null!;
+    public DateTimeOffset? PayoutDestinationUpdatedAt { get; set; }
+    /// <summary>Referral link clicks (/aff/{store}/{code}) while active.</summary>
+    public long LinkClicks { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public List<Referral> Referrals { get; set; } = new();
@@ -195,4 +198,21 @@ public class PendingCredit
     public DateTimeOffset NextAttemptAt { get; set; }
     public string? LastError { get; set; }
     public bool GaveUp { get; set; }
+}
+
+public enum AccessTokenKind { MagicLink, AdminLink, Session }
+
+/// <summary>Affiliate panel credentials. Only a SHA-256 hash of the random token is stored.</summary>
+public class AffiliateAccessToken
+{
+    public string Id { get; set; } = Ids.New();
+    public string StoreId { get; set; } = null!;
+    public string AffiliateId { get; set; } = null!;
+    public Affiliate Affiliate { get; set; } = null!;
+    public AccessTokenKind Kind { get; set; }
+    public string TokenHash { get; set; } = null!;
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset ExpiresAt { get; set; }
+    public DateTimeOffset? UsedAt { get; set; }
+    public DateTimeOffset? RevokedAt { get; set; }
 }

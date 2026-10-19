@@ -1,0 +1,14 @@
+@model PanelLoginViewModel
+@{
+    Layout = "_LayoutSimple";
+    ViewData["Title"] = StringLocalizer["{0} affiliate panel", Model.StoreName];
+}
+<div class="row justify-content-center my-5">
+  <div class="col-md-8 col-lg-5" id="maxiaff-panel-confirm">
+    <h1 class="h3 mb-3">@ViewData["Title"]</h1>
+    <form method="post" asp-action="Auth" asp-route-storeId="@Model.StoreId">
+      <input type="hidden" name="token" value="@ViewData["Token"]" />
+      <button type="submit" class="btn btn-primary" id="maxiaff-panel-continue" text-translate="true">Continue to my affiliate panel</button>
+    </form>
+  </div>
+</div>

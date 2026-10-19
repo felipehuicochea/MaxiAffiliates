@@ -30,6 +30,8 @@ public class AffiliatesListViewModel
     public string? LandingUrl { get; set; }
     public string ReferralLinkPrefix { get; set; } = "";
     public string ScriptUrl { get; set; } = "";
+    public string PanelLoginUrl { get; set; } = "";
+    public bool EmailConfigured { get; set; }
     public Affiliate[] Affiliates { get; set; } = [];
 }
 
@@ -71,4 +73,23 @@ public class PayoutCycleViewModel
     public string StoreId { get; set; } = null!;
     public PayoutCycle Cycle { get; set; } = null!;
     public BTCPayServer.Plugins.MaxiAffiliates.Services.PayoutCycleService.BatchRow[] Rows { get; set; } = [];
+}
+
+public class PanelLoginViewModel
+{
+    public string StoreId { get; set; } = "";
+    public string StoreName { get; set; } = "";
+    public bool EmailAvailable { get; set; }
+    public string? Email { get; set; }
+    public string? Error { get; set; }
+}
+
+public class PanelViewModel
+{
+    public string StoreId { get; set; } = "";
+    public string StoreName { get; set; } = "";
+    public BTCPayServer.Plugins.MaxiAffiliates.Services.PanelOverview Overview { get; set; } = null!;
+    public string ReferralLink { get; set; } = "";
+    public BTCPayServer.Plugins.MaxiAffiliates.Data.PayoutMethodKind PayoutMethod { get; set; }
+    public string PayoutDestination { get; set; } = "";
 }

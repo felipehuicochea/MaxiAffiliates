@@ -38,11 +38,17 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
                     b.Property<string>("Email")
                         .HasColumnType("text");
 
+                    b.Property<long>("LinkClicks")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Name")
                         .HasColumnType("text");
 
                     b.Property<string>("PayoutDestination")
                         .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("PayoutDestinationUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("PayoutMethod")
                         .IsRequired()
@@ -69,6 +75,48 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Affiliates", "BTCPayServer.Plugins.MaxiAffiliates");
+                });
+
+            modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.AffiliateAccessToken", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AffiliateId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("StoreId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("AffiliateId", "Kind", "CreatedAt");
+
+                    b.ToTable("AccessTokens", "BTCPayServer.Plugins.MaxiAffiliates");
                 });
 
             modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.AffiliateStoreSettings", b =>
@@ -502,6 +550,16 @@ namespace BTCPayServer.Plugins.MaxiAffiliates.Data.Migrations
                     b.HasIndex("StoreId", "SubscriberId");
 
                     b.ToTable("Referrals", "BTCPayServer.Plugins.MaxiAffiliates");
+                });
+
+            modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.AffiliateAccessToken", b =>
+                {
+                    b.HasOne("BTCPayServer.Plugins.MaxiAffiliates.Data.Affiliate", "Affiliate")
+                        .WithMany()
+                        .HasForeignKey("AffiliateId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Affiliate");
                 });
 
             modelBuilder.Entity("BTCPayServer.Plugins.MaxiAffiliates.Data.Commission", b =>

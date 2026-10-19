@@ -1,0 +1,119 @@
+@model PanelViewModel
+@inject BTCPayServer.Services.Rates.CurrencyNameTable Currencies
+@{
+    Layout = "_LayoutSimple";
+    ViewData["Title"] = StringLocalizer["{0} affiliate panel", Model.StoreName];
+    var o = Model.Overview;
+    string Sats(long v) => v.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
+    string D(DateTimeOffset? d) => d?.ToString("yyyy-MM-dd") ?? "";
+    string Badge(CommissionStatus s) => s switch { CommissionStatus.Paid => "bg-success", CommissionStatus.Payable => "bg-info", CommissionStatus.Reversed => "bg-danger", _ => "bg-warning text-dark" };
+    var ok = TempData["MaxiAffPanelOk"] as string; var err = TempData["MaxiAffPanelError"] as string;
+}
+<div class="my-4" id="maxiaff-panel" data-affiliate="@o.Affiliate.Email">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 mb-1">@ViewData["Title"]</h1>
+      <div class="text-secondary">@o.Affiliate.Email · <span class="badge bg-secondary" id="maxiaff-panel-status">@StringLocalizer[o.Affiliate.Status.ToString()]</span></div>
+    </div>
+    <form method="post" asp-action="Logout" asp-route-storeId="@Model.StoreId"><button class="btn btn-outline-secondary btn-sm" id="maxiaff-panel-logout" text-translate="true">Sign out</button></form>
+  </div>
+  @if (ok is not null) { <div class="alert alert-success" id="maxiaff-panel-ok">@ok</div> }
+  @if (err is not null) { <div class="alert alert-danger" id="maxiaff-panel-err">@err</div> }
+  @if (o.Affiliate.Status == AffiliateStatus.Pending) { <div class="alert alert-warning" text-translate="true">Your application is waiting for approval. Your referral link starts working once the store approves it.</div> }
+  @if (o.Affiliate.Status == AffiliateStatus.Suspended) { <div class="alert alert-warning" text-translate="true">Your account is suspended. New referrals are not credited and payouts are on hold.</div> }
+
+  <div class="card mb-3"><div class="card-body">
+    <h2 class="h5" text-translate="true">Your referral link</h2>
+    <div class="input-group">
+      <input class="form-control" readonly value="@Model.ReferralLink" id="maxiaff-panel-link" />
+      <button class="btn btn-outline-primary" type="button" data-clipboard-target="#maxiaff-panel-link" onclick="navigator.clipboard?.writeText(document.getElementById('maxiaff-panel-link').value)" text-translate="true">Copy</button>
+    </div>
+    <small class="text-secondary">@StringLocalizer["Referral code: {0}", o.Affiliate.Code]</small>
+  </div></div>
+
+  <div class="row g-3 mb-3" id="maxiaff-panel-stats">
+    @foreach (var (key, val, id) in new[] {
+        ("Link clicks", Sats(o.Stats.LinkClicks), "clicks"), ("Referred customers", Sats(o.Stats.Referrals), "referrals"),
+        ("Sales", Sats(o.Stats.Sales), "sales"), ("Earned (sats)", Sats(o.Stats.EarnedSats), "earned"), ("Paid out (sats)", Sats(o.Stats.PaidSats), "paid") })
+    {
+      <div class="col-6 col-md"><div class="card h-100"><div class="card-body">
+        <div class="text-secondary small">@StringLocalizer[key]</div><div class="h4 mb-0" data-stat="@id">@val</div>
+      </div></div></div>
+    }
+  </div>
+
+  <div class="card mb-3" id="maxiaff-panel-balance" data-net="@o.Balance.NetSats" data-state="@o.Balance.State"><div class="card-body">
+    <h2 class="h5" text-translate="true">Balance</h2>
+    <div class="row">
+      <div class="col-6 col-md-3"><div class="text-secondary small" text-translate="true">Pending (on hold)</div><div class="h5">@Sats(o.Balance.PendingSats) sats</div>
+        @if (o.Balance.NextMaturity is { } nm) { <small class="text-secondary">@StringLocalizer["Next release: {0}", D(nm)]</small> }</div>
+      <div class="col-6 col-md-3"><div class="text-secondary small" text-translate="true">Payable</div><div class="h5">@Sats(o.Balance.PayableSats) sats</div></div>
+      <div class="col-6 col-md-3"><div class="text-secondary small" text-translate="true">Refund clawbacks</div><div class="h5">@Sats(o.Balance.AdjustmentSats) sats</div></div>
+      <div class="col-6 col-md-3"><div class="text-secondary small" text-translate="true">Next payout</div><div class="h5">@Sats(o.Balance.NetSats) sats</div>
+        <small class="text-secondary">@StringLocalizer[MaxiAffDisplay.StateKey(o.Balance.State)]</small></div>
+    </div>
+    <small class="text-secondary">@StringLocalizer["Payouts are sent {0}. Minimum payout: {1} sats; smaller balances carry over.", StringLocalizer[o.Settings.PayoutFrequency == PayoutFrequency.Weekly ? "weekly" : "monthly"], Sats(o.Settings.MinPayoutSats)]</small>
+  </div></div>
+
+  <div class="card mb-3"><div class="card-body">
+    <h2 class="h5" text-translate="true">Commissions</h2>
+    @if (o.Commissions.Length == 0) { <p class="text-secondary mb-0" text-translate="true">No commissions yet. Share your link to start earning.</p> }
+    else {
+    <div class="table-responsive"><table class="table table-sm mb-0" id="maxiaff-panel-commissions">
+      <thead><tr><th text-translate="true">Date</th><th text-translate="true">Sale</th><th class="text-end" text-translate="true">Commission</th><th class="text-end" text-translate="true">Sats</th><th text-translate="true">Status</th><th text-translate="true">Payable from</th></tr></thead>
+      <tbody>
+      @foreach (var c in o.Commissions)
+      {
+        <tr data-invoice="@c.InvoiceId" data-status="@c.Status">
+          <td>@D(c.CreatedAt)</td>
+          <td>@(c.SaleCurrency is null ? "" : MaxiAffDisplay.Amount(Currencies, c.SaleAmount, c.SaleCurrency))</td>
+          <td class="text-end">@MaxiAffDisplay.Amount(Currencies, c.CommissionAmount, c.BaseCurrency)</td>
+          <td class="text-end">@Sats(c.AmountSats)</td>
+          <td><span class="badge @Badge(c.Status)">@StringLocalizer[c.Status.ToString()]</span></td>
+          <td>@(c.Status == CommissionStatus.Pending ? D(c.PayableAt) : "")</td>
+        </tr>
+      }
+      </tbody></table></div>
+    }
+  </div></div>
+
+  <div class="card mb-3"><div class="card-body">
+    <h2 class="h5" text-translate="true">Payout history</h2>
+    @if (o.Payouts.Length == 0) { <p class="text-secondary mb-0" text-translate="true">No payouts yet.</p> }
+    else {
+    <div class="table-responsive"><table class="table table-sm mb-0" id="maxiaff-panel-payouts">
+      <thead><tr><th text-translate="true">Date</th><th text-translate="true">Method</th><th text-translate="true">Destination</th><th class="text-end" text-translate="true">Amount (sats)</th><th text-translate="true">State</th></tr></thead>
+      <tbody>
+      @foreach (var b in o.Payouts)
+      {
+        <tr data-state="@b.State">
+          <td>@D(b.CompletedAt ?? b.ApprovedAt ?? b.CreatedAt)</td>
+          <td>@StringLocalizer[b.PayoutMethod == PayoutMethodKind.Lightning ? "Lightning" : "On-chain"]</td>
+          <td class="text-break small">@b.Destination</td>
+          <td class="text-end">@Sats(b.AmountSats)</td>
+          <td>@StringLocalizer[b.State switch { PayoutBatchState.Completed => "Paid", PayoutBatchState.Failed => "Failed", PayoutBatchState.Draft => "Awaiting approval", _ => "Processing" }]</td>
+        </tr>
+      }
+      </tbody></table></div>
+    }
+  </div></div>
+
+  <div class="card mb-3"><div class="card-body">
+    <h2 class="h5" text-translate="true">Payout address</h2>
+    <form method="post" asp-action="UpdatePayout" asp-route-storeId="@Model.StoreId" id="maxiaff-panel-payout-form">
+      <div class="mb-2">
+        @if (o.Settings.LightningEnabled) {
+          <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="payoutMethod" value="Lightning" id="pm-ln" checked="@(Model.PayoutMethod == PayoutMethodKind.Lightning)" /><label class="form-check-label" for="pm-ln" text-translate="true">Lightning (Lightning address or LNURL)</label></div>
+        }
+        @if (o.Settings.OnChainEnabled) {
+          <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="payoutMethod" value="OnChain" id="pm-oc" checked="@(Model.PayoutMethod == PayoutMethodKind.OnChain)" /><label class="form-check-label" for="pm-oc" text-translate="true">On-chain (Bitcoin address)</label></div>
+        }
+      </div>
+      <div class="input-group">
+        <input class="form-control" name="payoutDestination" id="maxiaff-panel-dest" value="@Model.PayoutDestination" maxlength="2000" required />
+        <button class="btn btn-primary" type="submit" id="maxiaff-panel-save" text-translate="true">Save</button>
+      </div>
+      <small class="text-secondary" text-translate="true">Changes apply to future payouts. Payouts already approved keep their address. Saving signs you out on other devices.</small>
+    </form>
+  </div></div>
+</div>
