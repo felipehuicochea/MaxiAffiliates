@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using MimeKit;
+using NicolasDorier.RateLimits;
 
 namespace BTCPayServer.Plugins.MaxiAffiliates.Controllers;
 
@@ -40,13 +41,14 @@ public class UIAffiliatePanelController(
 
     [HttpPost(Base + "/login")]
     [ValidateAntiForgeryToken]
+    [RateLimitsFilter(ZoneLimits.Login, Scope = RateLimitsScope.RemoteAddress)]
     public async Task<IActionResult> Login(string storeId, string? email)
     {
         var vm = await LoginModel(storeId);
         if (vm is null) return NotFound();
         if (!vm.EmailAvailable) return View(vm);
         vm.Email = email;
-        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+        if (InputSafety.NormalizeEmail(email) is null)
         {
             ModelState.AddModelError(nameof(email), localizer["Enter a valid email address."]);
             return View(vm);
@@ -81,6 +83,7 @@ public class UIAffiliatePanelController(
 
     [HttpPost(Base + "/auth")]
     [ValidateAntiForgeryToken]
+    [RateLimitsFilter(ZoneLimits.Login, Scope = RateLimitsScope.RemoteAddress)]
     [ActionName("Auth")]
     public async Task<IActionResult> AuthPost(string storeId, string? token)
     {

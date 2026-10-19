@@ -25,8 +25,8 @@ public class MaxiAffiliatesController(MaxiAffiliatesDbContext db) : Controller
             plugin = "BTCPayServer.Plugins.MaxiAffiliates",
             version = typeof(Plugin).Assembly.GetName().Version?.ToString(),
             schema = MaxiAffiliatesDbContext.Schema,
-            appliedMigrations = applied,
-            pendingMigrations = pending
+            migrationsApplied = applied.Length,
+            pendingMigrations = pending.Length
         });
     }
 }

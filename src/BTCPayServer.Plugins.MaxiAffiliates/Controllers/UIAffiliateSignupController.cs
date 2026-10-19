@@ -5,6 +5,7 @@ using BTCPayServer.Services.Stores;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
+using NicolasDorier.RateLimits;
 
 namespace BTCPayServer.Plugins.MaxiAffiliates.Controllers;
 
@@ -23,6 +24,7 @@ public class UIAffiliateSignupController(
 
     [HttpPost("~/plugins/maxiaffiliates/{storeId}/signup")]
     [ValidateAntiForgeryToken]
+    [RateLimitsFilter(ZoneLimits.Register, Scope = RateLimitsScope.RemoteAddress)]
     public async Task<IActionResult> Signup(string storeId, SignupViewModel input)
     {
         var vm = await BaseModel(storeId);

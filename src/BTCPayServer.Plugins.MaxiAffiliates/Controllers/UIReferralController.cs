@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 
+using NicolasDorier.RateLimits;
 namespace BTCPayServer.Plugins.MaxiAffiliates.Controllers;
 
 public class ReferralCheckoutRequest
@@ -65,6 +66,7 @@ public class UIReferralController(
     /// <summary>CORS is handled by BTCPay's global AllowAnyOrigin policy (no credentials). JSON (from the helper) or form/query (plain link). Creates a plan checkout carrying the referral and returns/redirects to it.</summary>
     [HttpPost("~/plugins/maxiaffiliates/{storeId}/checkout")]
     [IgnoreAntiforgeryToken]
+    [RateLimitsFilter(ZoneLimits.PublicInvoices, Scope = RateLimitsScope.RemoteAddress)]
     public async Task<IActionResult> CheckoutPost(string storeId)
     {
         // Parse the body ourselves: accept application/json and text/plain (CORS "simple request") alike.
@@ -81,6 +83,7 @@ public class UIReferralController(
     }
 
     [HttpGet("~/plugins/maxiaffiliates/{storeId}/checkout")]
+    [RateLimitsFilter(ZoneLimits.PublicInvoices, Scope = RateLimitsScope.RemoteAddress)]
     public Task<IActionResult> CheckoutGet(string storeId, [FromQuery] ReferralCheckoutRequest req) => Checkout(storeId, req, json: false);
 
     async Task<IActionResult> Checkout(string storeId, ReferralCheckoutRequest? req, bool json)
@@ -88,7 +91,9 @@ public class UIReferralController(
         if (req?.OfferingId is null || req.PlanId is null)
             return BadRequest(new { error = "offeringId and planId are required" });
         var res = await referrals.Resolve(storeId, Request.Cookies[ReferralCookie.Name(storeId)], req.Ref, req.Email, HttpContext.RequestAborted);
-        var created = await checkouts.Create(storeId, req.OfferingId, req.PlanId, req.Email, req.SuccessRedirectUrl, res.Affiliate, Request.GetRequestBaseUrl());
+        var settings = await affiliates.GetSettings(storeId, HttpContext.RequestAborted);
+        var redirect = InputSafety.SafeSuccessRedirect(req.SuccessRedirectUrl, settings.LandingUrl, Request.Host.Host);
+        var created = await checkouts.Create(storeId, req.OfferingId, req.PlanId, req.Email, redirect, res.Affiliate, Request.GetRequestBaseUrl());
         if (created is null)
             return NotFound(new { error = "plan not found" });
         if (!json)

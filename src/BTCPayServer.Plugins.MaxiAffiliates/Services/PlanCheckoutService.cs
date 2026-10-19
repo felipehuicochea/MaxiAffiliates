@@ -33,7 +33,7 @@ public class PlanCheckoutService(ApplicationDbContextFactory dbFactory)
         var data = new PlanCheckoutData
         {
             NewSubscriber = true,
-            NewSubscriberEmail = email is { Length: > 0 and <= 254 } && email.Contains('@') ? email.Trim() : null,
+            NewSubscriberEmail = InputSafety.NormalizeEmail(email),
             NewSubscriberMetadata = meta.ToString(Newtonsoft.Json.Formatting.None),
             InvoiceMetadata = meta.ToString(Newtonsoft.Json.Formatting.None),
             PlanId = plan.Id,

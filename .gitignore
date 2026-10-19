@@ -454,3 +454,5 @@ $RECYCLE.BIN/
 !.vscode/extensions.json
 dev/.btcpay-data/
 dev/.ln/
+dist/
+dev/.btcpay-fresh/

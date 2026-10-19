@@ -96,3 +96,15 @@ The script points the store's SMTP at Mailpit (127.0.0.1:39025) for the magic-li
 
 ## M8 Spanish screenshots
 `~/.venvs/pw/bin/python dev/screens_m8.py` (stack with `--profile mail` + BTCPay running): selects the "Spanish" dictionary, captures `docs/screens/m8/`, switches back to English. Review table: `docs/TRANSLATIONS_REVIEW.md`.
+
+## M9 release build + fresh-install test
+```bash
+./build-release.sh                       # dist/BTCPayServer.Plugins.MaxiAffiliates/1.0.0.0/BTCPayServer.Plugins.MaxiAffiliates.btcpay (+ SHA256SUMS)
+dotnet build submodules/btcpayserver/BTCPayServer -c Release -m:2   # once (build-release.sh already builds it)
+# fresh BTCPay: Release + Production env, own DB "btcpayfresh" + datadir, NO plugin preloaded, NO SSRF exception
+nohup dev/run-btcpay-fresh.sh > /tmp/btcpay-fresh.log 2>&1 &      # http://127.0.0.1:14160
+~/.venvs/pw/bin/python dev/fresh_install.py upload               # registers admin (creds in gitignored dev/.btcpay-fresh/admin.txt), uploads .btcpay
+pkill -f bin/Release/net10.0/BTCPayServer.dll; nohup dev/run-btcpay-fresh.sh > /tmp/btcpay-fresh.log 2>&1 &   # restart
+~/.venvs/pw/bin/python dev/fresh_install.py verify               # 8 checks
+```
+Security review: `docs/SECURITY_REVIEW.md`; dependency audit: `dotnet list src/BTCPayServer.Plugins.MaxiAffiliates package --vulnerable --include-transitive`.

@@ -77,6 +77,7 @@ with sync_playwright() as p:
           ap.locator("#maxiaff-panel").count() == 1 and ck and ck[0]["httpOnly"] and ck[0]["sameSite"] == "Lax" and ck[0]["path"] == f"/plugins/maxiaffiliates/{store}/panel")
     check("empty panel: no commissions / payouts yet", "No commissions yet" in ap.inner_text("body") and "No payouts yet" in ap.inner_text("body"))
     # a second browser reuses the same admin link (it's a bookmarkable 30-day link until reissued)
+    time.sleep(13)  # Login zone refill
     other = b.new_context(); op = other.new_page(); op.goto(link); op.click("#maxiaff-panel-continue"); op.wait_for_load_state("networkidle")
     check("admin link works on a second device", op.locator("#maxiaff-panel").count() == 1)
     anon = b.new_context().new_page(); anon.goto(f"{BASE}/plugins/maxiaffiliates/{store}/panel")
@@ -123,6 +124,7 @@ with sync_playwright() as p:
     shot(ap, "04-panel-overview.png")
 
     # 3) store email configured -> magic link by email (Mailpit sink)
+    time.sleep(65)  # the dev server runs with production rate limits (Login zone: 5/min, burst 3)
     r = gf("PUT", f"/api/v1/stores/{store}/email", {"server": "127.0.0.1", "port": 39025, "login": "", "password": "", "from": "affiliates@cointeligencia.test", "disableCertificateCheck": True})
     mail("/api/v1/messages", "DELETE")
     ap.click("#maxiaff-panel-logout"); ap.wait_for_load_state("networkidle")
@@ -151,6 +153,7 @@ with sync_playwright() as p:
     magic = m.group(1).replace("&amp;", "&") if m else BASE
     ap.goto(magic); ap.click("#maxiaff-panel-continue"); ap.wait_for_load_state("networkidle")
     check("magic link signs in", ap.locator("#maxiaff-panel").count() == 1)
+    time.sleep(13)  # Login zone refill
     z = b.new_context().new_page(); z.goto(magic); z.click("#maxiaff-panel-continue"); z.wait_for_load_state("networkidle")
     check("magic link is single use", z.locator("#maxiaff-panel-error").count() == 1)
     shot(z, "08-magic-link-used.png")
@@ -170,6 +173,7 @@ with sync_playwright() as p:
     check("change notification emailed", any("payout address was changed" in x["Subject"] for x in inbox(AFF)))
     op.goto(f"{BASE}/plugins/maxiaffiliates/{store}/panel")
     check("address change signs out the other device", "/panel/login" in op.url)
+    time.sleep(13)  # Login zone refill
     zz = b.new_context().new_page(); zz.goto(link); zz.click("#maxiaff-panel-continue"); zz.wait_for_load_state("networkidle")
     check("and revokes the old admin link", zz.locator("#maxiaff-panel-error").count() == 1)
     pg.goto(adm); check("admin list shows the new address", ADDR2 in pg.locator(f'tr[data-affiliate="{AFF}"]').inner_text())

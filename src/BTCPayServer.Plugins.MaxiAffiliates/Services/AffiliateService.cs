@@ -32,8 +32,8 @@ public class AffiliateService(IDbContextFactory<MaxiAffiliatesDbContext> dbFacto
 
     public async Task<SignupResult> Signup(SignupRequest req, Network network, CancellationToken ct = default)
     {
-        var email = req.Email?.Trim().ToLowerInvariant() ?? "";
-        if (email.Length is < 3 or > 254 || !email.Contains('@') || email.StartsWith('@') || email.EndsWith('@'))
+        var email = InputSafety.NormalizeEmail(req.Email) ?? "";
+        if (email.Length == 0)
             return new(null, nameof(req.Email), "Enter a valid email address.");
         var settings = await GetSettings(req.StoreId, ct);
         if (!settings.Enabled)

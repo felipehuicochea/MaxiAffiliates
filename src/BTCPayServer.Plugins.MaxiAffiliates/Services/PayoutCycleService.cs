@@ -253,7 +253,7 @@ public class PayoutCycleService(IDbContextFactory<MaxiAffiliatesDbContext> dbFac
 
     static string Csv(string v)
     {
-        if (v.Length > 0 && "=+-@\t\r".Contains(v[0]) && !decimal.TryParse(v, NumberStyles.Number, CultureInfo.InvariantCulture, out _)) v = "'" + v; // spreadsheet formula injection
+        v = InputSafety.SpreadsheetSafe(v)!; // spreadsheet formula injection
         return v.IndexOfAny([',', '"', '\r', '\n']) >= 0 ? "\"" + v.Replace("\"", "\"\"") + "\"" : v;
     }
 

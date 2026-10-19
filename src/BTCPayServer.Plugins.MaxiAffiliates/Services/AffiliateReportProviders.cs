@@ -43,10 +43,10 @@ public class AffiliateCommissionsReportProvider(IDbContextFactory<MaxiAffiliates
         {
             var d = q.AddData();
             d.Add(c.CreatedAt);
-            d.Add(c.Affiliate.Email);
-            d.Add(c.Affiliate.Code);
+            d.Add(InputSafety.SpreadsheetSafe(c.Affiliate.Email));
+            d.Add(InputSafety.SpreadsheetSafe(c.Affiliate.Code));
             d.Add(c.InvoiceId);
-            d.Add(c.PlanId);
+            d.Add(InputSafety.SpreadsheetSafe(c.PlanId));
             d.Add(c.SaleCurrency is null ? null : displayFormatter.ToFormattedAmount(c.SaleAmount, c.SaleCurrency));
             d.Add(displayFormatter.ToFormattedAmount(c.CommissionAmount, c.BaseCurrency));
             d.Add(c.AmountSats);
@@ -86,7 +86,7 @@ public class AffiliatePayoutsReportProvider(IDbContextFactory<MaxiAffiliatesDbCo
         foreach (var b in rows)
         {
             var d = q.AddData();
-            d.Add(b.CreatedAt); d.Add(b.Affiliate.Email); d.Add(b.Affiliate.Code); d.Add(b.PayoutMethod.ToString()); d.Add(b.Destination);
+            d.Add(b.CreatedAt); d.Add(InputSafety.SpreadsheetSafe(b.Affiliate.Email)); d.Add(InputSafety.SpreadsheetSafe(b.Affiliate.Code)); d.Add(b.PayoutMethod.ToString()); d.Add(InputSafety.SpreadsheetSafe(b.Destination));
             d.Add(b.CommissionCount); d.Add(b.GrossSats); d.Add(b.AdjustmentSats); d.Add(b.AmountSats);
             d.Add(b.State.ToString()); d.Add(b.ApprovedAt); d.Add(b.CompletedAt); d.Add(b.PayoutId);
         }

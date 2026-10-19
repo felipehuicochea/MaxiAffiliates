@@ -31,6 +31,9 @@ All examples use `https://BTCPAY` (your BTCPay Server) and `STORE_ID`. En españ
 - **How the code is chosen:** the BTCPay cookie and the explicit `ref` are combined with first-click-wins (30 days). The code is dropped if the affiliate isn't Active, or if the buyer email equals the affiliate's email (self-referral).
 - **CORS:** BTCPay applies its global AllowAnyOrigin policy (without credentials), so cross-site calls carry the ref in the body.
 
+- **successRedirectUrl** (security, M9): only accepted when its host is the store's landing-page host or the BTCPay host (http/https, no user-info). Other values are dropped and BTCPay shows its own receipt.
+- **Rate limits:** the checkout endpoint uses BTCPay's `publicinvoices` zone per IP (in production about 4/min, burst 10; extra requests are delayed).
+
 ## 4. Metadata contract (for backends calling Greenfield directly)
 If your backend creates checkouts itself (Greenfield `POST /api/v1/plan-checkout`, or `POST /api/v1/stores/{id}/invoices` for one-time sales), include the referral code:
 ```json
