@@ -1,3 +1,5 @@
+<img src="docs/assets/logo.png" alt="MaxiAffiliates logo" width="96">
+
 # MaxiAffiliates for BTCPay Server
 
 Affiliate program plugin for BTCPay Server (2.4.5+): referral links, commissions on paid invoices and subscription renewals, and payouts through BTCPay pull payments.
