@@ -6,6 +6,11 @@
     <Product>MaxiAffiliates</Product>
     <Description>Affiliate program for BTCPay Server: referral links, commissions on invoices and subscription renewals, and payouts via pull payments.</Description>
     <Version>1.0.0</Version>
+    <Authors>Felipe Huicochea</Authors>
+    <PackageProjectUrl>https://github.com/felipehuicochea/MaxiAffiliates</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/felipehuicochea/MaxiAffiliates</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <!-- Security contact: info@criptomonedastv.com (see SECURITY.md) -->
   </PropertyGroup>
 
   <!-- Plugin development properties -->

@@ -7,7 +7,7 @@ Only the latest release of MaxiAffiliates receives security fixes. It targets BT
 Please **do not open a public issue** for security problems.
 
 - Preferred: GitHub private vulnerability reporting ("Report a vulnerability" on the repository's Security tab).
-- Email: **`SECURITY_CONTACT_EMAIL`** (subject "MaxiAffiliates security"). *Maintainer: replace this placeholder with a real, monitored address before the repository is made public.*
+- Email: **info@criptomonedastv.com** (subject "MaxiAffiliates security").
 - Include the plugin and BTCPay versions, steps to reproduce, impact, and any proof of concept. Please don't send real funds, real customer data or production credentials.
 
 What to expect:
